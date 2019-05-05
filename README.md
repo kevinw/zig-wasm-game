@@ -1,14 +1,10 @@
 # Tetris 
 
-A simple tetris clone written in
-[zig programming language](https://github.com/andrewrk/zig).
+A simple tetris clone written in [zig programming language](https://github.com/andrewrk/zig).
 
-[YouTube Demo](https://www.youtube.com/watch?v=AiintPutWrE).
+## Demo
 
-
-![](http://i.imgur.com/umuNndz.png)
-
-[Windows 64-bit build](http://superjoe.s3.amazonaws.com/temp/tetris.zip)
+https://raulgrell.github.io/tetris/
 
 ## Controls
 
@@ -23,12 +19,14 @@ A simple tetris clone written in
 ## Dependencies
 
  * [Zig compiler](https://github.com/andrewrk/zig) - use the debug build.
- * [libepoxy](https://github.com/anholt/libepoxy)
- * [GLFW](http://www.glfw.org/)
- * [libpng](http://www.libpng.org/pub/png/libpng.html)
+ * Browser supporting WebGL2 (WebGL planned)
 
 ## Building and Running
 
+Open the index.html file to run. You can also run a local http live server on the project root so the game restarts whenever you make a change.
+
+If you make changes to the zig code, rebuild the wasm binary by running the following command from the project root:
+
 ```
-zig build play
+zig build-exe -target wasm32-freestanding --release-small src/main.zig
 ```

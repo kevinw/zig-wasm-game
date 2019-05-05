@@ -1,11 +1,11 @@
-const c = @import("c.zig");
+const c = @import("platform.zig");
 const AllShaders = @import("all_shaders.zig").AllShaders;
 const Mat4x4 = @import("math3d.zig").Mat4x4;
-const PngImage = @import("png.zig").PngImage;
-const c_allocator = @import("std").heap.c_allocator;
+const allocator = c.allocator;
+const RawImage = @import("png.zig").RawImage;
 
 pub const Spritesheet = struct {
-    img: PngImage,
+    img: RawImage,
     count: usize,
     texture_id: c.GLuint,
     vertex_buffer: c.GLuint,
@@ -30,14 +30,14 @@ pub const Spritesheet = struct {
         c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
     }
 
-    pub fn init(s: *Spritesheet, compressed_bytes: []const u8, w: usize, h: usize) !void {
-        s.img = try PngImage.create(compressed_bytes);
+    pub fn init(s: *Spritesheet, raw_img: RawImage, w: usize, h: usize) !void {
+        s.img = raw_img;
         const col_count = s.img.width / w;
         const row_count = s.img.height / h;
         s.count = col_count * row_count;
 
-        c.glGenTextures(1, &s.texture_id);
-        errdefer c.glDeleteTextures(1, &s.texture_id);
+        s.texture_id = c.glCreateTexture();
+        errdefer c.glDeleteTexture(s.texture_id);
 
         c.glBindTexture(c.GL_TEXTURE_2D, s.texture_id);
         c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
@@ -49,12 +49,13 @@ pub const Spritesheet = struct {
             c.GL_TEXTURE_2D,
             0,
             c.GL_RGBA,
-            @intCast(c_int, s.img.width),
-            @intCast(c_int, s.img.height),
+            s.img.width,
+            s.img.height,
             0,
             c.GL_RGBA,
             c.GL_UNSIGNED_BYTE,
-            @ptrCast(*c_void, &s.img.raw[0]),
+            &s.img.raw[0],
+            s.img.pitch * s.img.height
         );
 
         c.glGenBuffers(1, &s.vertex_buffer);
@@ -68,12 +69,12 @@ pub const Spritesheet = struct {
         };
 
         c.glBindBuffer(c.GL_ARRAY_BUFFER, s.vertex_buffer);
-        c.glBufferData(c.GL_ARRAY_BUFFER, 4 * 3 * @sizeOf(c.GLfloat), @ptrCast(*const c_void, &vertexes[0][0]), c.GL_STATIC_DRAW);
+        c.glBufferData(c.GL_ARRAY_BUFFER, 4 * 3 * @sizeOf(c.GLfloat), &vertexes[0][0],  c.GL_STATIC_DRAW);
 
-        s.tex_coord_buffers = c_allocator.alloc(c.GLuint, s.count) catch return error.NoMem;
-        errdefer c_allocator.free(s.tex_coord_buffers);
+        s.tex_coord_buffers = allocator.alloc(c.GLuint, s.count) catch return error.NoMem;
+        errdefer allocator.free(s.tex_coord_buffers);
 
-        c.glGenBuffers(@intCast(c.GLint, s.tex_coord_buffers.len), s.tex_coord_buffers.ptr);
+        c.glGenBuffers(s.tex_coord_buffers.len, &s.tex_coord_buffers[0]);
         errdefer c.glDeleteBuffers(@intCast(c.GLint, s.tex_coord_buffers.len), &s.tex_coord_buffers[0]);
 
         for (s.tex_coord_buffers) |tex_coord_buffer, i| {
@@ -106,16 +107,14 @@ pub const Spritesheet = struct {
             };
 
             c.glBindBuffer(c.GL_ARRAY_BUFFER, tex_coord_buffer);
-            c.glBufferData(c.GL_ARRAY_BUFFER, 4 * 2 * @sizeOf(c.GLfloat), @ptrCast(*const c_void, &tex_coords[0][0]), c.GL_STATIC_DRAW);
+            c.glBufferData(c.GL_ARRAY_BUFFER, 4 * 2 * @sizeOf(c.GLfloat),  &tex_coords[0][0], c.GL_STATIC_DRAW);
         }
     }
 
     pub fn deinit(s: *Spritesheet) void {
-        c.glDeleteBuffers(@intCast(c.GLint, s.tex_coord_buffers.len), s.tex_coord_buffers.ptr);
-        c_allocator.free(s.tex_coord_buffers);
-        c.glDeleteBuffers(1, &s.vertex_buffer);
-        c.glDeleteTextures(1, &s.texture_id);
-
-        s.img.destroy();
+        c.glDeleteBuffers(s.tex_coord_buffers.len, &s.tex_coord_buffers[0]);
+        allocator.free(s.tex_coord_buffers);
+        c.glDeleteBuffer(s.vertex_buffer);
+        c.glDeleteTexture(s.texture_id);
     }
 };

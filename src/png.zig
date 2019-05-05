@@ -1,17 +1,38 @@
-const c = @import("c.zig");
-const c_allocator = @import("std").heap.c_allocator;
+const c = @import("platform.zig");
+const allocator = platform.allocator;
 
-pub const PngImage = struct {
+pub fn embedImage(comptime filename: []const u8, width: u32, height: u32, bpp: u32) RawImage {
+  var pixels = @embedFile(filename);
+  return RawImage {
+    .width = width,
+    .height = height,
+    .pitch = width * bpp / 8,
+    .raw = pixels[0..],
+  };
+}
+
+pub const RawImage = struct {
     width: u32,
     height: u32,
     pitch: u32,
     raw: []u8,
 
     pub fn destroy(pi: *PngImage) void {
-        c_allocator.free(pi.raw);
+        allocator.free(pi.raw);
     }
 
-    pub fn create(compressed_bytes: []const u8) !PngImage {
+    pub fn fromBytes(bytes: []const u8, width: u32, height: u32, pitch: u32) !RawImage {
+        var new = try allocator.alloc(u8, pi.height * pi.pitch);
+        var img = RawImage {
+            .width = width,
+            .height = height,
+            .pitch = pitch,
+            .raw = new[0..],
+        };
+        return new;
+    }
+
+    pub fn fromPng(compressed_bytes: []const u8) !PngImage {
         var pi: PngImage = undefined;
 
         if (c.png_sig_cmp(compressed_bytes.ptr, 0, 8) != 0) {
@@ -61,11 +82,11 @@ pub const PngImage = struct {
         if (color_type != PNG_COLOR_TYPE_RGBA) return error.InvalidFormat;
 
         pi.pitch = pi.width * bits_per_channel * channel_count / 8;
-        pi.raw = try c_allocator.alloc(u8, pi.height * pi.pitch);
-        errdefer c_allocator.free(pi.raw);
+        pi.raw = try allocator.alloc(u8, pi.height * pi.pitch);
+        errdefer allocator.free(pi.raw);
 
-        const row_ptrs = try c_allocator.alloc(c.png_bytep, pi.height);
-        defer c_allocator.free(row_ptrs);
+        const row_ptrs = try allocator.alloc(c.png_bytep, pi.height);
+        defer allocator.free(row_ptrs);
 
         {
             var i: usize = 0;

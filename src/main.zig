@@ -1,20 +1,24 @@
+use @import("math3d.zig");
+
 const std = @import("std");
 const os = std.os;
-const panic = std.debug.panic;
+const c = @import("platform.zig");
+const panic = c.panic;
 const assert = std.debug.assert;
 const bufPrint = std.fmt.bufPrint;
-const c = @import("c.zig");
 const debug_gl = @import("debug_gl.zig");
-use @import("math3d.zig");
 const AllShaders = @import("all_shaders.zig").AllShaders;
 const static_geometry = @import("static_geometry.zig");
 const StaticGeometry = static_geometry.StaticGeometry;
 const pieces = @import("pieces.zig");
 const Piece = pieces.Piece;
 const Spritesheet = @import("spritesheet.zig").Spritesheet;
+const embedImage = @import("png.zig").embedImage;
+
+pub extern fn setScore(_: c_uint) void;
+pub extern fn playAudio(_: [*c]f32, _: c_uint) void;
 
 const Tetris = struct {
-    window: *c.GLFWwindow,
     all_shaders: AllShaders,
     static_geometry: StaticGeometry,
     projection: Mat4x4,
@@ -115,6 +119,22 @@ const time_per_level = 60.0;
 const empty_row = []Cell{Cell{ .Empty = {} }} ** grid_width;
 const empty_grid = [][grid_width]Cell{empty_row} ** grid_height;
 
+const AUDIO_BUFFER_SIZE = 2048;
+const a: f32 = 0.1;
+
+var beep = blk: {
+    @setEvalBranchQuota(AUDIO_BUFFER_SIZE * 2 + 1);
+    var b = []f32 { 0 } ** AUDIO_BUFFER_SIZE;
+    for (b) |*x, i| {
+        x.* = if ((i / 64) % 2 == 1) a else -a;
+    }
+    break :blk b;
+};
+
+const font_raw = embedImage("../assets/fontx.bin",  576, 128, 32);
+
+
+
 extern fn errorCallback(err: c_int, description: [*c]const u8) void {
     panic("Error: {}\n", description);
 }
@@ -138,9 +158,7 @@ extern fn keyCallback(window: ?*c.GLFWwindow, key: c_int, scancode: c_int, actio
     }
 }
 
-var tetris_state: Tetris = undefined;
-
-const font_png = @embedFile("../assets/font.png");
+pub var tetris_state: Tetris = undefined;
 
 pub fn main() !void {
     _ = c.glfwSetErrorCallback(errorCallback);
@@ -233,6 +251,89 @@ pub fn main() !void {
     }
 
     debug_gl.assertNoError();
+}
+
+export fn onKeyDown(keyCode: c_int, state: u8) void {
+  if (state == 0) return;
+  const t = &tetris_state;
+  switch (keyCode) {
+      c.KEY_ESCAPE, c.KEY_P => userTogglePause(t),
+      c.KEY_SPACE => userDropCurPiece(t),
+      c.KEY_DOWN => userCurPieceFall(t),
+      c.KEY_LEFT => userMoveCurPiece(t, -1),
+      c.KEY_RIGHT => userMoveCurPiece(t, 1),
+      c.KEY_UP => userRotateCurPiece(t, 1),
+      c.KEY_SHIFT => userRotateCurPiece(t, -1),
+      c.KEY_R => restartGame(t),
+      c.KEY_CTRL => userSetHoldPiece(t),
+      else => {},
+  }
+}
+
+export fn onKeyUp(button: c_int, x: c_int, y: c_int) void {
+
+}
+
+export fn onMouseDown(button: c_int, x: c_int, y: c_int) void {
+
+}
+
+export fn onMouseUp(button: c_int, x: c_int, y: c_int) void {
+
+}
+
+export fn onMouseMove(x: c_int, y: c_int) void {
+
+}
+
+export fn onInit() void {
+    const t = &tetris_state;
+    t.framebuffer_width = 500;
+    t.framebuffer_height = 660;
+
+    var vertex_array_object: c.GLuint = undefined;
+    c.glGenVertexArrays(1, &vertex_array_object);
+    c.glBindVertexArray(vertex_array_object);
+
+    t.all_shaders = AllShaders.create() catch c.abort("Shader creation failed");
+    t.static_geometry = StaticGeometry.create();
+    t.font.init(font_raw, font_char_width, font_char_height) catch unreachable;
+
+    var seed_bytes: [@sizeOf(u64)]u8 = "12341234";
+    t.prng = std.rand.DefaultPrng.init(std.mem.readIntNative(u64, &seed_bytes));
+    t.rand = &t.prng.random;
+
+    resetProjection(t);
+
+    restartGame(t);
+
+    c.glClearColor(0.0, 0.0, 0.0, 1.0);
+    c.glEnable(c.GL_BLEND);
+    c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
+    c.glPixelStorei(c.GL_UNPACK_ALIGNMENT, 1);
+
+    c.glViewport(0, 0, t.framebuffer_width, t.framebuffer_height);
+
+    debug_gl.assertNoError();
+}
+
+var prev_time: c_int = 0;
+export fn onAnimationFrame(now_time: c_int) void {
+    const t = &tetris_state;
+    const elapsed = @intToFloat(f32, now_time - prev_time) / 1000.0;
+    prev_time = now_time;
+
+    c.glClear(c.GL_COLOR_BUFFER_BIT | c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT);
+
+    nextFrame(t, elapsed);
+    draw(t);
+}
+
+export fn onDestroy() void {
+    const t = &tetris_state;
+    t.all_shaders.destroy();
+    t.static_geometry.destroy();
+    t.font.deinit();
 }
 
 fn fillRectMvp(t: *Tetris, color: Vec4, mvp: Mat4x4) void {
@@ -379,6 +480,8 @@ fn draw(t: *Tetris) void {
             drawParticle(t, particle);
         }
     }
+
+    debug_gl.assertNoError();
 }
 
 fn drawText(t: *Tetris, text: []const u8, left: i32, top: i32, size: f32) void {
@@ -387,7 +490,6 @@ fn drawText(t: *Tetris, text: []const u8, left: i32, top: i32, size: f32) void {
             const char_left = @intToFloat(f32, left) + @intToFloat(f32, i * font_char_width) * size;
             const model = mat4x4_identity.translate(char_left, @intToFloat(f32, top), 0.0).scale(size, size, 0.0);
             const mvp = t.projection.mult(model);
-
             t.font.draw(t.all_shaders, col, mvp);
         } else {
             unreachable;
@@ -411,7 +513,7 @@ fn drawPieceWithColor(t: *Tetris, piece: Piece, left: i32, top: i32, rot: usize,
     }
 }
 
-fn nextFrame(t: *Tetris, elapsed: f64) void {
+fn nextFrame(t: *Tetris, elapsed: f32) void {
     if (t.is_paused) return;
 
     for (t.falling_blocks) |*maybe_p| {
@@ -464,7 +566,7 @@ fn nextFrame(t: *Tetris, elapsed: f64) void {
         } else {
             const rate = 8; // oscillations per sec
             const amplitude = 4; // pixels
-            const offset = @floatCast(f32, amplitude * -c.sin(2.0 * PI * t.screen_shake_elapsed * rate));
+            const offset = @floatCast(f32, amplitude * -std.math.sin(2.0 * PI * t.screen_shake_elapsed * rate));
             t.projection = mat4x4Ortho(
                 0.0,
                 @intToFloat(f32, t.framebuffer_width),
@@ -608,6 +710,7 @@ fn restartGame(t: *Tetris) void {
 
 fn lockPiece(t: *Tetris) void {
     t.score += 1;
+    c.playAudio(&beep[0], AUDIO_BUFFER_SIZE);
 
     for (t.cur_piece.layout[t.cur_piece_rot]) |row, y| {
         for (row) |is_filled, x| {
@@ -675,6 +778,7 @@ fn lockPiece(t: *Tetris) void {
 
     const score_per_rows_deleted = []c_int{ 0, 10, 30, 50, 70 };
     t.score += score_per_rows_deleted[rows_deleted];
+    c.setScore(t.score);
 
     if (rows_deleted > 0) {
         activateScreenShake(t, 0.04);
