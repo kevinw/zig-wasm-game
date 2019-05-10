@@ -1,5 +1,5 @@
 const c = @import("platform.zig");
-const allocator = platform.allocator;
+const allocator = c.allocator;
 
 pub fn embedImage(comptime filename: []const u8, width: u32, height: u32, bpp: u32) RawImage {
   var pixels = @embedFile(filename);
@@ -17,7 +17,7 @@ pub const RawImage = struct {
     pitch: u32,
     raw: []u8,
 
-    pub fn destroy(pi: *PngImage) void {
+    pub fn destroy(pi: *RawImage) void {
         allocator.free(pi.raw);
     }
 
@@ -32,8 +32,8 @@ pub const RawImage = struct {
         return new;
     }
 
-    pub fn fromPng(compressed_bytes: []const u8) !PngImage {
-        var pi: PngImage = undefined;
+    pub fn fromPng(compressed_bytes: []const u8) !RawImage {
+        var pi: RawImage = undefined;
 
         if (c.png_sig_cmp(compressed_bytes.ptr, 0, 8) != 0) {
             return error.NotPngFile;

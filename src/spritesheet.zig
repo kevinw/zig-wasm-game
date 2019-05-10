@@ -36,8 +36,8 @@ pub const Spritesheet = struct {
         const row_count = s.img.height / h;
         s.count = col_count * row_count;
 
-        s.texture_id = c.glCreateTexture();
-        errdefer c.glDeleteTexture(s.texture_id);
+        c.glGenTextures(1, &s.texture_id);
+        errdefer c.glDeleteTextures(1, &s.texture_id);
 
         c.glBindTexture(c.GL_TEXTURE_2D, s.texture_id);
         c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
@@ -49,13 +49,13 @@ pub const Spritesheet = struct {
             c.GL_TEXTURE_2D,
             0,
             c.GL_RGBA,
-            s.img.width,
-            s.img.height,
+            @intCast(c_int, s.img.width),
+            @intCast(c_int, s.img.height),
             0,
             c.GL_RGBA,
             c.GL_UNSIGNED_BYTE,
             &s.img.raw[0],
-            s.img.pitch * s.img.height
+            // s.img.pitch * s.img.height
         );
 
         c.glGenBuffers(1, &s.vertex_buffer);
@@ -74,7 +74,7 @@ pub const Spritesheet = struct {
         s.tex_coord_buffers = allocator.alloc(c.GLuint, s.count) catch return error.NoMem;
         errdefer allocator.free(s.tex_coord_buffers);
 
-        c.glGenBuffers(s.tex_coord_buffers.len, &s.tex_coord_buffers[0]);
+        c.glGenBuffers(@intCast(c_int, s.tex_coord_buffers.len), &s.tex_coord_buffers[0]);
         errdefer c.glDeleteBuffers(@intCast(c.GLint, s.tex_coord_buffers.len), &s.tex_coord_buffers[0]);
 
         for (s.tex_coord_buffers) |tex_coord_buffer, i| {
@@ -112,9 +112,9 @@ pub const Spritesheet = struct {
     }
 
     pub fn deinit(s: *Spritesheet) void {
-        c.glDeleteBuffers(s.tex_coord_buffers.len, &s.tex_coord_buffers[0]);
+        c.glDeleteBuffers(@intCast(c_int, s.tex_coord_buffers.len), &s.tex_coord_buffers[0]);
         allocator.free(s.tex_coord_buffers);
-        c.glDeleteBuffer(s.vertex_buffer);
-        c.glDeleteTexture(s.texture_id);
+        c.glDeleteBuffers(1, s.vertex_buffer);
+        c.glDeleteTextures(1, s.texture_id);
     }
 };

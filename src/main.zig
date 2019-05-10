@@ -15,10 +15,8 @@ const Piece = pieces.Piece;
 const Spritesheet = @import("spritesheet.zig").Spritesheet;
 const embedImage = @import("png.zig").embedImage;
 
-pub extern fn setScore(_: c_uint) void;
-pub extern fn playAudio(_: [*c]f32, _: c_uint) void;
-
-const Tetris = struct {
+pub const Tetris = struct {
+    window: *c.GLFWwindow,
     all_shaders: AllShaders,
     static_geometry: StaticGeometry,
     projection: Mat4x4,
@@ -101,8 +99,8 @@ const hold_piece_height = next_piece_height;
 const hold_piece_left = next_piece_left;
 const hold_piece_top = level_display_top - margin_size - hold_piece_height;
 
-const window_width = next_piece_left + next_piece_width + margin_size;
-const window_height = board_top + board_height + margin_size;
+pub const window_width = next_piece_left + next_piece_width + margin_size;
+pub const window_height = board_top + board_height + margin_size;
 
 const board_color = Vec4{ .data = []f32{ 72.0 / 255.0, 72.0 / 255.0, 72.0 / 255.0, 1.0 } };
 
@@ -110,8 +108,8 @@ const init_piece_delay = 0.5;
 const min_piece_delay = 0.05;
 const level_delay_increment = 0.05;
 
-const font_char_width = 18;
-const font_char_height = 32;
+pub const font_char_width = 18;
+pub const font_char_height = 32;
 
 const gravity = 0.14;
 const time_per_level = 60.0;
@@ -120,6 +118,7 @@ const empty_row = []Cell{Cell{ .Empty = {} }} ** grid_width;
 const empty_grid = [][grid_width]Cell{empty_row} ** grid_height;
 
 const AUDIO_BUFFER_SIZE = 2048;
+
 const a: f32 = 0.1;
 
 var beep = blk: {
@@ -133,208 +132,8 @@ var beep = blk: {
 
 const font_raw = embedImage("../assets/fontx.bin",  576, 128, 32);
 
-
-
-extern fn errorCallback(err: c_int, description: [*c]const u8) void {
-    panic("Error: {}\n", description);
-}
-
-extern fn keyCallback(window: ?*c.GLFWwindow, key: c_int, scancode: c_int, action: c_int, mods: c_int) void {
-    if (action != c.GLFW_PRESS) return;
-    const t = @ptrCast(*Tetris, @alignCast(@alignOf(Tetris), c.glfwGetWindowUserPointer(window).?));
-
-    switch (key) {
-        c.GLFW_KEY_ESCAPE => c.glfwSetWindowShouldClose(window, c.GL_TRUE),
-        c.GLFW_KEY_SPACE => userDropCurPiece(t),
-        c.GLFW_KEY_DOWN => userCurPieceFall(t),
-        c.GLFW_KEY_LEFT => userMoveCurPiece(t, -1),
-        c.GLFW_KEY_RIGHT => userMoveCurPiece(t, 1),
-        c.GLFW_KEY_UP => userRotateCurPiece(t, 1),
-        c.GLFW_KEY_LEFT_SHIFT, c.GLFW_KEY_RIGHT_SHIFT => userRotateCurPiece(t, -1),
-        c.GLFW_KEY_R => restartGame(t),
-        c.GLFW_KEY_P => userTogglePause(t),
-        c.GLFW_KEY_LEFT_CONTROL, c.GLFW_KEY_RIGHT_CONTROL => userSetHoldPiece(t),
-        else => {},
-    }
-}
-
+pub const main = c.main;
 pub var tetris_state: Tetris = undefined;
-
-pub fn main() !void {
-    _ = c.glfwSetErrorCallback(errorCallback);
-
-    if (c.glfwInit() == c.GL_FALSE) {
-        panic("GLFW init failure\n");
-    }
-    defer c.glfwTerminate();
-
-    c.glfwWindowHint(c.GLFW_CONTEXT_VERSION_MAJOR, 3);
-    c.glfwWindowHint(c.GLFW_CONTEXT_VERSION_MINOR, 2);
-    c.glfwWindowHint(c.GLFW_OPENGL_FORWARD_COMPAT, c.GL_TRUE);
-    c.glfwWindowHint(c.GLFW_OPENGL_DEBUG_CONTEXT, debug_gl.is_on);
-    c.glfwWindowHint(c.GLFW_OPENGL_PROFILE, c.GLFW_OPENGL_CORE_PROFILE);
-    c.glfwWindowHint(c.GLFW_DEPTH_BITS, 0);
-    c.glfwWindowHint(c.GLFW_STENCIL_BITS, 8);
-    c.glfwWindowHint(c.GLFW_RESIZABLE, c.GL_FALSE);
-
-    var window = c.glfwCreateWindow(window_width, window_height, c"Tetris", null, null) orelse {
-        panic("unable to create window\n");
-    };
-    defer c.glfwDestroyWindow(window);
-
-    _ = c.glfwSetKeyCallback(window, keyCallback);
-    c.glfwMakeContextCurrent(window);
-    c.glfwSwapInterval(1);
-
-    // create and bind exactly one vertex array per context and use
-    // glVertexAttribPointer etc every frame.
-    var vertex_array_object: c.GLuint = undefined;
-    c.glGenVertexArrays(1, &vertex_array_object);
-    c.glBindVertexArray(vertex_array_object);
-    defer c.glDeleteVertexArrays(1, &vertex_array_object);
-
-    const t = &tetris_state;
-    c.glfwGetFramebufferSize(window, &t.framebuffer_width, &t.framebuffer_height);
-    assert(t.framebuffer_width >= window_width);
-    assert(t.framebuffer_height >= window_height);
-
-    t.window = window;
-
-    t.all_shaders = try AllShaders.create();
-    defer t.all_shaders.destroy();
-
-    t.static_geometry = StaticGeometry.create();
-    defer t.static_geometry.destroy();
-
-    t.font.init(font_png, font_char_width, font_char_height) catch {
-        panic("unable to read assets\n");
-    };
-    defer t.font.deinit();
-
-    var seed_bytes: [@sizeOf(u64)]u8 = undefined;
-    os.getRandomBytes(seed_bytes[0..]) catch |err| {
-        panic("unable to seed random number generator: {}", err);
-    };
-    t.prng = std.rand.DefaultPrng.init(std.mem.readIntNative(u64, &seed_bytes));
-    t.rand = &t.prng.random;
-
-    resetProjection(t);
-
-    restartGame(t);
-
-    c.glClearColor(0.0, 0.0, 0.0, 1.0);
-    c.glEnable(c.GL_BLEND);
-    c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
-    c.glPixelStorei(c.GL_UNPACK_ALIGNMENT, 1);
-
-    c.glViewport(0, 0, t.framebuffer_width, t.framebuffer_height);
-    c.glfwSetWindowUserPointer(window, @ptrCast(*c_void, t));
-
-    debug_gl.assertNoError();
-
-    const start_time = c.glfwGetTime();
-    var prev_time = start_time;
-
-    while (c.glfwWindowShouldClose(window) == c.GL_FALSE) {
-        c.glClear(c.GL_COLOR_BUFFER_BIT | c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT);
-
-        const now_time = c.glfwGetTime();
-        const elapsed = now_time - prev_time;
-        prev_time = now_time;
-
-        nextFrame(t, elapsed);
-
-        draw(t);
-        c.glfwSwapBuffers(window);
-
-        c.glfwPollEvents();
-    }
-
-    debug_gl.assertNoError();
-}
-
-export fn onKeyDown(keyCode: c_int, state: u8) void {
-  if (state == 0) return;
-  const t = &tetris_state;
-  switch (keyCode) {
-      c.KEY_ESCAPE, c.KEY_P => userTogglePause(t),
-      c.KEY_SPACE => userDropCurPiece(t),
-      c.KEY_DOWN => userCurPieceFall(t),
-      c.KEY_LEFT => userMoveCurPiece(t, -1),
-      c.KEY_RIGHT => userMoveCurPiece(t, 1),
-      c.KEY_UP => userRotateCurPiece(t, 1),
-      c.KEY_SHIFT => userRotateCurPiece(t, -1),
-      c.KEY_R => restartGame(t),
-      c.KEY_CTRL => userSetHoldPiece(t),
-      else => {},
-  }
-}
-
-export fn onKeyUp(button: c_int, x: c_int, y: c_int) void {
-
-}
-
-export fn onMouseDown(button: c_int, x: c_int, y: c_int) void {
-
-}
-
-export fn onMouseUp(button: c_int, x: c_int, y: c_int) void {
-
-}
-
-export fn onMouseMove(x: c_int, y: c_int) void {
-
-}
-
-export fn onInit() void {
-    const t = &tetris_state;
-    t.framebuffer_width = 500;
-    t.framebuffer_height = 660;
-
-    var vertex_array_object: c.GLuint = undefined;
-    c.glGenVertexArrays(1, &vertex_array_object);
-    c.glBindVertexArray(vertex_array_object);
-
-    t.all_shaders = AllShaders.create() catch c.abort("Shader creation failed");
-    t.static_geometry = StaticGeometry.create();
-    t.font.init(font_raw, font_char_width, font_char_height) catch unreachable;
-
-    var seed_bytes: [@sizeOf(u64)]u8 = "12341234";
-    t.prng = std.rand.DefaultPrng.init(std.mem.readIntNative(u64, &seed_bytes));
-    t.rand = &t.prng.random;
-
-    resetProjection(t);
-
-    restartGame(t);
-
-    c.glClearColor(0.0, 0.0, 0.0, 1.0);
-    c.glEnable(c.GL_BLEND);
-    c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
-    c.glPixelStorei(c.GL_UNPACK_ALIGNMENT, 1);
-
-    c.glViewport(0, 0, t.framebuffer_width, t.framebuffer_height);
-
-    debug_gl.assertNoError();
-}
-
-var prev_time: c_int = 0;
-export fn onAnimationFrame(now_time: c_int) void {
-    const t = &tetris_state;
-    const elapsed = @intToFloat(f32, now_time - prev_time) / 1000.0;
-    prev_time = now_time;
-
-    c.glClear(c.GL_COLOR_BUFFER_BIT | c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT);
-
-    nextFrame(t, elapsed);
-    draw(t);
-}
-
-export fn onDestroy() void {
-    const t = &tetris_state;
-    t.all_shaders.destroy();
-    t.static_geometry.destroy();
-    t.font.deinit();
-}
 
 fn fillRectMvp(t: *Tetris, color: Vec4, mvp: Mat4x4) void {
     t.all_shaders.primitive.bind();
@@ -385,7 +184,7 @@ fn drawCenteredText(t: *Tetris, text: []const u8) void {
     drawText(t, text, draw_left, draw_top, 1.0);
 }
 
-fn draw(t: *Tetris) void {
+pub fn draw(t: *Tetris) void {
     fillRect(t, board_color, board_left, board_top, board_width, board_height);
     fillRect(t, board_color, next_piece_left, next_piece_top, next_piece_width, next_piece_height);
     fillRect(t, board_color, score_left, score_top, score_width, score_height);
@@ -513,7 +312,7 @@ fn drawPieceWithColor(t: *Tetris, piece: Piece, left: i32, top: i32, rot: usize,
     }
 }
 
-fn nextFrame(t: *Tetris, elapsed: f32) void {
+pub fn nextFrame(t: *Tetris, elapsed: f64) void {
     if (t.is_paused) return;
 
     for (t.falling_blocks) |*maybe_p| {
@@ -639,7 +438,7 @@ fn computeGhost(t: *Tetris) void {
     t.ghost_y = board_top + cell_size * (t.cur_piece_y + off_y - 1);
 }
 
-fn userCurPieceFall(t: *Tetris) void {
+pub fn userCurPieceFall(t: *Tetris) void {
     if (t.game_over or t.is_paused) return;
     _ = curPieceFall(t);
 }
@@ -656,14 +455,14 @@ fn curPieceFall(t: *Tetris) bool {
     }
 }
 
-fn userDropCurPiece(t: *Tetris) void {
+pub fn userDropCurPiece(t: *Tetris) void {
     if (t.game_over or t.is_paused) return;
     while (!curPieceFall(t)) {
         t.score += 1;
     }
 }
 
-fn userMoveCurPiece(t: *Tetris, dir: i8) void {
+pub fn userMoveCurPiece(t: *Tetris, dir: i8) void {
     if (t.game_over or t.is_paused) return;
     if (pieceWouldCollide(t, t.cur_piece.*, t.cur_piece_x + dir, t.cur_piece_y, t.cur_piece_rot)) {
         return;
@@ -671,7 +470,7 @@ fn userMoveCurPiece(t: *Tetris, dir: i8) void {
     t.cur_piece_x += dir;
 }
 
-fn userRotateCurPiece(t: *Tetris, rot: i8) void {
+pub fn userRotateCurPiece(t: *Tetris, rot: i8) void {
     if (t.game_over or t.is_paused) return;
     const new_rot = @intCast(usize, @rem(@intCast(isize, t.cur_piece_rot) + rot + 4, 4));
     if (pieceWouldCollide(t, t.cur_piece.*, t.cur_piece_x, t.cur_piece_y, new_rot)) {
@@ -680,13 +479,13 @@ fn userRotateCurPiece(t: *Tetris, rot: i8) void {
     t.cur_piece_rot = new_rot;
 }
 
-fn userTogglePause(t: *Tetris) void {
+pub fn userTogglePause(t: *Tetris) void {
     if (t.game_over) return;
 
     t.is_paused = !t.is_paused;
 }
 
-fn restartGame(t: *Tetris) void {
+pub fn restartGame(t: *Tetris) void {
     t.piece_delay = init_piece_delay;
     t.delay_left = init_piece_delay;
     t.score = 0;
@@ -710,7 +509,7 @@ fn restartGame(t: *Tetris) void {
 
 fn lockPiece(t: *Tetris) void {
     t.score += 1;
-    c.playAudio(&beep[0], AUDIO_BUFFER_SIZE);
+    // c.playAudio(&beep[0], AUDIO_BUFFER_SIZE);
 
     for (t.cur_piece.layout[t.cur_piece_rot]) |row, y| {
         for (row) |is_filled, x| {
@@ -778,14 +577,14 @@ fn lockPiece(t: *Tetris) void {
 
     const score_per_rows_deleted = []c_int{ 0, 10, 30, 50, 70 };
     t.score += score_per_rows_deleted[rows_deleted];
-    c.setScore(t.score);
+    // c.setScore(t.score);
 
     if (rows_deleted > 0) {
         activateScreenShake(t, 0.04);
     }
 }
 
-fn resetProjection(t: *Tetris) void {
+pub fn resetProjection(t: *Tetris) void {
     t.projection = mat4x4Ortho(
         0.0,
         @intToFloat(f32, t.framebuffer_width),
@@ -883,7 +682,7 @@ fn doGameOver(t: *Tetris) void {
     }
 }
 
-fn userSetHoldPiece(t: *Tetris) void {
+pub fn userSetHoldPiece(t: *Tetris) void {
     if (t.game_over or t.is_paused or t.hold_was_set) return;
     var next_cur: *const Piece = undefined;
     if (t.hold_piece) |hold_piece| {
