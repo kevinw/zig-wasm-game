@@ -19,14 +19,30 @@ https://raulgrell.github.io/tetris/
 ## Dependencies
 
  * [Zig compiler](https://github.com/andrewrk/zig) - use the debug build.
- * Browser supporting WebGL2 (WebGL planned)
+
+### Desktop
+ * GLFW
+ * libepoxy
+ * libpng
+
+### WebGL
+ * Browser supporting WebGL
 
 ## Building and Running
 
-Open the index.html file to run. You can also run a local http live server on the project root so the game restarts whenever you make a change.
+### Desktop
 
+Run the following command from the project root:
+
+```
+zig build
+```
+
+### Webgl
+
+Open the index.html file to run. You can also run a local http live server on the project root so the game restarts whenever you make a change.
 If you make changes to the zig code, rebuild the wasm binary by running the following command from the project root:
 
 ```
-zig build-exe -target wasm32-freestanding --release-small src/main.zig
+zig build-exe -target wasm32-freestanding --release-small src/main_web.zig
 ```
