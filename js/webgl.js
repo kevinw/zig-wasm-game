@@ -48,7 +48,7 @@ const glBuffers = [];
 const glTextures = [];
 const glUniformLocations = [];
 
-const compileShader = (sourcePtr, sourceLen, type) => {
+const glInitShader = (sourcePtr, sourceLen, type) => {
   const source = readCharStr(sourcePtr, sourceLen);
   const shader = gl.createShader(type);
   gl.shaderSource(shader, source);
@@ -59,7 +59,7 @@ const compileShader = (sourcePtr, sourceLen, type) => {
   glShaders.push(shader);
   return glShaders.length - 1;
 }
-const linkShaderProgram = (vertexShaderId, fragmentShaderId) => {
+const glLinkShaderProgram = (vertexShaderId, fragmentShaderId) => {
   const program = gl.createProgram();
   gl.attachShader(program, glShaders[vertexShaderId]);
   gl.attachShader(program, glShaders[fragmentShaderId]);
@@ -136,7 +136,7 @@ const glDeleteBuffer = (id) => {
   gl.deleteBuffer(glPrograms[id]);
   glPrograms[id] = undefined;
 };
-const glDeleteBuffers = (num, buffersPtr) => {
+const glDeleteBuffers = (num, dataPtr) => {
   const buffers = new Uint32Array(memory.buffer, dataPtr, num);
   for (let n = 0; n < num; n++) {
     gl.deleteBuffer(buffers[n]);
@@ -162,6 +162,20 @@ const glCreateTexture = () => {
   glTextures.push(gl.createTexture());
   return glTextures.length - 1;
 };
+const glGenTextures = (num, dataPtr) => {
+  const textures = new Uint32Array(memory.buffer, dataPtr, num);
+  for (let n = 0; n < num; n++) {
+    const b = glCreateTexture();
+    textures[n] = b;
+  }
+}
+const glDeleteTextures = (num, dataPtr) => {
+  const textures = new Uint32Array(memory.buffer, dataPtr, num);
+  for (let n = 0; n < num; n++) {
+    gl.glCreateTexture(buffers[n]);
+    glTextures[textures[n]] = undefined;
+  }
+};
 const glDeleteTexture = (id) => {
   gl.deleteTexture(glShaders[id]);
   glTextures[id] = undefined;
@@ -178,19 +192,26 @@ const glCreateVertexArray = () => {
   return glVertexArrays.length - 1;
 };
 const glGenVertexArrays = (num, dataPtr) => {
-  const buffers = new Uint32Array(memory.buffer, dataPtr, num);
+  const vaos = new Uint32Array(memory.buffer, dataPtr, num);
   for (let n = 0; n < num; n++) {
     const b = glCreateVertexArray();
-    buffers[n] = b;
+    vaos[n] = b;
   }
 }
+const glDeleteVertexArrays = (num, dataPtr) => {
+  const vaos = new Uint32Array(memory.buffer, dataPtr, num);
+  for (let n = 0; n < num; n++) {
+    gl.glCreateTexture(vaos[n]);
+    glVertexArrays[vaos[n]] = undefined;
+  }
+};
 const glBindVertexArray = (id) => gl.bindVertexArray(glVertexArrays[id]);
 const glPixelStorei = (type, alignment) => gl.pixelStorei(type, alignment);
 const glGetError = () => gl.getError();
 
 var webgl = {
-  compileShader,
-  linkShaderProgram,
+  glInitShader,
+  glLinkShaderProgram,
   glDeleteProgram,
   glDetachShader,
   glDeleteShader,
@@ -217,6 +238,8 @@ var webgl = {
   glVertexAttribPointer,
   glDrawArrays,
   glCreateTexture,
+  glGenTextures,
+  glDeleteTextures,
   glDeleteTexture,
   glBindTexture,
   glTexImage2D,
@@ -224,6 +247,7 @@ var webgl = {
   glActiveTexture,
   glCreateVertexArray,
   glGenVertexArrays,
+  glDeleteVertexArrays,
   glBindVertexArray,
   glPixelStorei,
   glGetError,

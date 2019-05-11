@@ -60,7 +60,7 @@
       setScore
     }
 
-    fetchAndInstantiate('main.wasm', { env }).then(instance => {
+    fetchAndInstantiate('main_web.wasm', { env }).then(instance => {
       memory = instance.exports.memory;
       instance.exports.onInit();
 

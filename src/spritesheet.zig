@@ -18,11 +18,11 @@ pub const Spritesheet = struct {
 
         c.glBindBuffer(c.GL_ARRAY_BUFFER, s.vertex_buffer);
         c.glEnableVertexAttribArray(@intCast(c.GLuint, as.texture_attrib_position));
-        c.glVertexAttribPointer(@intCast(c.GLuint, as.texture_attrib_position), 3, c.GL_FLOAT, c.GL_FALSE, 0, null);
+        c.glVertexAttribPointer(@intCast(c.GLuint, as.texture_attrib_position), 3, c.GL_FLOAT, c.GL_FALSE, 0, if (c.is_web) 0 else null);
 
         c.glBindBuffer(c.GL_ARRAY_BUFFER, s.tex_coord_buffers[index]);
         c.glEnableVertexAttribArray(@intCast(c.GLuint, as.texture_attrib_tex_coord));
-        c.glVertexAttribPointer(@intCast(c.GLuint, as.texture_attrib_tex_coord), 2, c.GL_FLOAT, c.GL_FALSE, 0, null);
+        c.glVertexAttribPointer(@intCast(c.GLuint, as.texture_attrib_tex_coord), 2, c.GL_FLOAT, c.GL_FALSE, 0, if (c.is_web) 0 else null);
 
         c.glActiveTexture(c.GL_TEXTURE0);
         c.glBindTexture(c.GL_TEXTURE_2D, s.texture_id);
@@ -54,8 +54,8 @@ pub const Spritesheet = struct {
             0,
             c.GL_RGBA,
             c.GL_UNSIGNED_BYTE,
-            &s.img.raw[0],
-            // s.img.pitch * s.img.height
+            s.img.raw.ptr,
+            s.img.pitch * s.img.height
         );
 
         c.glGenBuffers(1, &s.vertex_buffer);
@@ -114,7 +114,7 @@ pub const Spritesheet = struct {
     pub fn deinit(s: *Spritesheet) void {
         c.glDeleteBuffers(@intCast(c_int, s.tex_coord_buffers.len), &s.tex_coord_buffers[0]);
         allocator.free(s.tex_coord_buffers);
-        c.glDeleteBuffers(1, s.vertex_buffer);
-        c.glDeleteTextures(1, s.texture_id);
+        c.glDeleteBuffers(1, &s.vertex_buffer);
+        c.glDeleteTextures(1, &s.texture_id);
     }
 };

@@ -19,10 +19,14 @@ pub const AllShaders = struct {
     texture_uniform_mvp: c.GLint,
     texture_uniform_tex: c.GLint,
 
-    pub fn create() !AllShaders {
+    pub fn create() AllShaders {
         var as: AllShaders = undefined;
 
-        as.primitive = try ShaderProgram.create(
+        var vertex_array_object: c.GLuint = undefined;
+        c.glGenVertexArrays(1, &vertex_array_object);
+        c.glBindVertexArray(vertex_array_object);
+
+        as.primitive = ShaderProgram.create(
             \\#version 300 es
             \\precision mediump float;
             \\in vec3 VertexPosition;
@@ -40,11 +44,11 @@ pub const AllShaders = struct {
             \\}
         , null);
 
-        as.primitive_attrib_position = as.primitive.attribLocation(c"VertexPosition");
-        as.primitive_uniform_mvp = as.primitive.uniformLocation(c"MVP");
-        as.primitive_uniform_color = as.primitive.uniformLocation(c"Color");
+        as.primitive_attrib_position = as.primitive.attribLocation("VertexPosition\x00");
+        as.primitive_uniform_mvp = as.primitive.uniformLocation("MVP\x00");
+        as.primitive_uniform_color = as.primitive.uniformLocation("Color\x00");
 
-        as.texture = try ShaderProgram.create(
+        as.texture = ShaderProgram.create(
             \\#version 300 es
             \\precision mediump float;
             \\in vec3 VertexPosition;
@@ -66,10 +70,10 @@ pub const AllShaders = struct {
             \\}
         , null);
 
-        as.texture_attrib_tex_coord = as.texture.attribLocation(c"TexCoord");
-        as.texture_attrib_position = as.texture.attribLocation(c"VertexPosition");
-        as.texture_uniform_mvp = as.texture.uniformLocation(c"MVP");
-        as.texture_uniform_tex = as.texture.uniformLocation(c"Tex");
+        as.texture_attrib_tex_coord = as.texture.attribLocation("TexCoord\x00");
+        as.texture_attrib_position = as.texture.attribLocation("VertexPosition\x00");
+        as.texture_uniform_mvp = as.texture.uniformLocation("MVP\x00");
+        as.texture_uniform_tex = as.texture.uniformLocation("Tex\x00");
 
         debug_gl.assertNoError();
 
@@ -92,18 +96,22 @@ pub const ShaderProgram = struct {
         c.glUseProgram(sp.program_id);
     }
 
-    pub fn attribLocation(sp: ShaderProgram, name: [*]const u8) c.GLint {
-        const id = c.glGetAttribLocation(sp.program_id, name);
-        // const id = c.glGetAttribLocation(sp.program_id, &name.ptr[0], name.len);
+    pub fn attribLocation(sp: ShaderProgram, name: []const u8) c.GLint {
+        const id = if (c.is_web) 
+             c.glGetAttribLocation(sp.program_id, name.ptr, name.len - 1)
+        else 
+            c.glGetAttribLocation(sp.program_id, name);
         if (id == -1) {
             c.abortReason("invalid attrib: {}\n", name);
         }
         return id;
     }
 
-    pub fn uniformLocation(sp: ShaderProgram, name: [*]const u8) c.GLint {
-        const id = c.glGetUniformLocation(sp.program_id, name);
-        // const id = c.glGetUniformLocation(sp.program_id, &name.ptr[0], name.len);
+    pub fn uniformLocation(sp: ShaderProgram, name: []const u8) c.GLint {
+        const id = if (c.is_web)
+            c.glGetUniformLocation(sp.program_id, name.ptr, name.len - 1)
+        else 
+             c.glGetUniformLocation(sp.program_id, name);
         if (id == -1){
             c.abortReason("invalid uniform: {}\n", name);
         }
@@ -119,13 +127,19 @@ pub const ShaderProgram = struct {
     }
 
     pub fn setUniformVec3(sp: ShaderProgram, uniform_id: c.GLint, value: math3d.Vec3) void {
-        // c.glUniform3fv(uniform_id, value.data[0], value.data[1], value.data[2]);
-        c.glUniform3fv(uniform_id, 1, value.data[0..].ptr);
+        if (c.is_web) {
+            c.glUniform3fv(uniform_id, value.data[0], value.data[1], value.data[2]);
+        } else {
+            c.glUniform3fv(uniform_id, 1, value.data[0..].ptr);
+        }
     }
 
     pub fn setUniformVec4(sp: ShaderProgram, uniform_id: c.GLint, value: Vec4) void {
-        // c.glUniform4fv(uniform_id, value.data[0], value.data[1], value.data[2], value.data[3]);
-        c.glUniform4fv(uniform_id, 1, value.data[0..].ptr);
+        if (c.is_web) {
+            c.glUniform4fv(uniform_id, value.data[0], value.data[1], value.data[2], value.data[3]);
+        } else {
+            c.glUniform4fv(uniform_id, 1, value.data[0..].ptr);
+        }
     }
 
     pub fn setUniformMat4x4(sp: ShaderProgram, uniform_id: c.GLint, value: Mat4x4) void {
@@ -136,11 +150,11 @@ pub const ShaderProgram = struct {
         vertex_source: []const u8,
         frag_source: []const u8,
         maybe_geometry_source: ?[]u8,
-    ) anyerror!ShaderProgram {
+    ) ShaderProgram {
         var sp: ShaderProgram = undefined;
-        sp.vertex_id = try c.initShader(vertex_source, c"vertex", c.GL_VERTEX_SHADER);
-        sp.fragment_id = try c.initShader(frag_source, c"fragment", c.GL_FRAGMENT_SHADER);
-        sp.program_id = try c.linkShaderProgram(sp.vertex_id, sp.fragment_id, null);
+        sp.vertex_id = c.initShader(vertex_source, "vertex\x00", c.GL_VERTEX_SHADER);
+        sp.fragment_id = c.initShader(frag_source, "fragment\x00", c.GL_FRAGMENT_SHADER);
+        sp.program_id = c.linkShaderProgram(sp.vertex_id, sp.fragment_id, null);
         debug_gl.assertNoError();
         return sp;
     }
