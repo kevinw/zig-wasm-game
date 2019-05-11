@@ -62,8 +62,7 @@ export fn onInit() void {
     t.static_geometry = StaticGeometry.create();
     t.font.init(font_raw, game.font_char_width, game.font_char_height) catch unreachable;
 
-    var seed_bytes: [@sizeOf(u64)]u8 = "12341234";
-    t.prng = std.rand.DefaultPrng.init(std.mem.readIntNative(u64, &seed_bytes));
+    t.prng = std.rand.DefaultPrng.init(@intCast(u64, c.getRandomSeed()));
     t.rand = &t.prng.random;
 
     game.resetProjection(t);

@@ -4,8 +4,9 @@ const os = std.os;
 pub const allocator = std.heap.c_allocator;
 pub const panic = std.debug.panic;
 
-const tetris = @import("tetris.zig");
-const Tetris = tetris.Tetris;
+const c = @import("platform.zig");
+const game = @import("game.zig");
+const Tetris = game.Tetris;
 const debug_gl = @import("debug_gl.zig");
 const AllShaders = @import("all_shaders.zig").AllShaders;
 const StaticGeometry = @import("static_geometry.zig").StaticGeometry;
@@ -23,15 +24,15 @@ extern fn keyCallback(window: ?*c.GLFWwindow, key: c_int, scancode: c_int, actio
 
     switch (key) {
         c.GLFW_KEY_ESCAPE => c.glfwSetWindowShouldClose(window, c.GL_TRUE),
-        c.GLFW_KEY_SPACE => tetris.userDropCurPiece(t),
-        c.GLFW_KEY_DOWN => tetris.userCurPieceFall(t),
-        c.GLFW_KEY_LEFT => tetris.userMoveCurPiece(t, -1),
-        c.GLFW_KEY_RIGHT => tetris.userMoveCurPiece(t, 1),
-        c.GLFW_KEY_UP => tetris.userRotateCurPiece(t, 1),
-        c.GLFW_KEY_LEFT_SHIFT, c.GLFW_KEY_RIGHT_SHIFT => tetris.userRotateCurPiece(t, -1),
-        c.GLFW_KEY_R => tetris.restartGame(t),
-        c.GLFW_KEY_P => tetris.userTogglePause(t),
-        c.GLFW_KEY_LEFT_CONTROL, c.GLFW_KEY_RIGHT_CONTROL => tetris.userSetHoldPiece(t),
+        c.GLFW_KEY_SPACE => game.userDropCurPiece(t),
+        c.GLFW_KEY_DOWN => game.userCurPieceFall(t),
+        c.GLFW_KEY_LEFT => game.userMoveCurPiece(t, -1),
+        c.GLFW_KEY_RIGHT => game.userMoveCurPiece(t, 1),
+        c.GLFW_KEY_UP => game.userRotateCurPiece(t, 1),
+        c.GLFW_KEY_LEFT_SHIFT, c.GLFW_KEY_RIGHT_SHIFT => game.userRotateCurPiece(t, -1),
+        c.GLFW_KEY_R => game.restartGame(t),
+        c.GLFW_KEY_P => game.userTogglePause(t),
+        c.GLFW_KEY_LEFT_CONTROL, c.GLFW_KEY_RIGHT_CONTROL => game.userSetHoldPiece(t),
         else => {},
     }
 }
@@ -53,7 +54,7 @@ pub fn main() !void {
     c.glfwWindowHint(c.GLFW_STENCIL_BITS, 8);
     c.glfwWindowHint(c.GLFW_RESIZABLE, c.GL_FALSE);
 
-    var window = c.glfwCreateWindow(tetris.window_width, tetris.window_height, c"Tetris", null, null) orelse {
+    var window = c.glfwCreateWindow(game.window_width, game.window_height, c"Tetris", null, null) orelse {
         panic("unable to create window\n");
     };
     defer c.glfwDestroyWindow(window);
@@ -62,21 +63,21 @@ pub fn main() !void {
     c.glfwMakeContextCurrent(window);
     c.glfwSwapInterval(1);
 
-    var t = &tetris.tetris_state;
+    var t = &game.tetris_state;
     c.glfwGetFramebufferSize(window, &t.framebuffer_width, &t.framebuffer_height);
-    assert(t.framebuffer_width >= tetris.window_width);
-    assert(t.framebuffer_height >= tetris.window_height);
+    assert(t.framebuffer_width >= game.window_width);
+    assert(t.framebuffer_height >= game.window_height);
 
     t.window = window;
 
-    t.all_shaders = try AllShaders.create();
+    t.all_shaders = AllShaders.create();
     defer t.all_shaders.destroy();
 
     t.static_geometry = StaticGeometry.create();
     defer t.static_geometry.destroy();
 
     const font_data = try RawImage.fromPng(font_png);
-    t.font.init(font_data, tetris.font_char_width, tetris.font_char_height) catch {
+    t.font.init(font_data, game.font_char_width, game.font_char_height) catch {
         panic("unable to read assets\n");
     };
     defer t.font.deinit();
@@ -88,9 +89,9 @@ pub fn main() !void {
     t.prng = std.rand.DefaultPrng.init(std.mem.readIntNative(u64, &seed_bytes));
     t.rand = &t.prng.random;
 
-    tetris.resetProjection(t);
+    game.resetProjection(t);
 
-    tetris.restartGame(t);
+    game.restartGame(t);
 
     c.glClearColor(0.0, 0.0, 0.0, 1.0);
     c.glEnable(c.GL_BLEND);
@@ -112,9 +113,9 @@ pub fn main() !void {
         const elapsed = now_time - prev_time;
         prev_time = now_time;
 
-        tetris.nextFrame(t, elapsed);
+        game.nextFrame(t, elapsed);
 
-        tetris.draw(t);
+        game.draw(t);
         c.glfwSwapBuffers(window);
 
         c.glfwPollEvents();

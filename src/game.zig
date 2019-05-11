@@ -508,7 +508,8 @@ pub fn restartGame(t: *Tetris) void {
 
 fn lockPiece(t: *Tetris) void {
     t.score += 1;
-    // c.playAudio(&beep[0], AUDIO_BUFFER_SIZE);
+
+    if (c.is_web) c.playAudio(&beep[0], AUDIO_BUFFER_SIZE);
 
     for (t.cur_piece.layout[t.cur_piece_rot]) |row, y| {
         for (row) |is_filled, x| {
@@ -576,7 +577,8 @@ fn lockPiece(t: *Tetris) void {
 
     const score_per_rows_deleted = []c_int{ 0, 10, 30, 50, 70 };
     t.score += score_per_rows_deleted[rows_deleted];
-    // c.setScore(t.score);
+    
+    if (c.is_web) c.setScore(t.score);
 
     if (rows_deleted > 0) {
         activateScreenShake(t, 0.04);

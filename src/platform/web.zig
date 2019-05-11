@@ -10,7 +10,7 @@ pub use webgl;
 
 const builtin = @import("builtin");
 pub const allocator = @import("std").heap.wasm_allocator;
-pub const Window = *c_void;
+pub const Window = c_void;
 
 pub fn panic(message: []const u8, error_return_trace: ?*builtin.StackTrace) noreturn {
     @setCold(true);

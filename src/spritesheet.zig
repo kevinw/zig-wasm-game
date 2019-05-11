@@ -45,18 +45,16 @@ pub const Spritesheet = struct {
         c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, c.GL_CLAMP_TO_EDGE);
         c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, c.GL_CLAMP_TO_EDGE);
         c.glPixelStorei(c.GL_PACK_ALIGNMENT, 4);
-        c.glTexImage2D(
-            c.GL_TEXTURE_2D,
-            0,
-            c.GL_RGBA,
-            @intCast(c_int, s.img.width),
-            @intCast(c_int, s.img.height),
-            0,
-            c.GL_RGBA,
-            c.GL_UNSIGNED_BYTE,
-            s.img.raw.ptr,
-            s.img.pitch * s.img.height
-        );
+        if (c.is_web) {
+            c.glTexImage2D(
+                c.GL_TEXTURE_2D, 0, c.GL_RGBA, @intCast(c_int, s.img.width), @intCast(c_int, s.img.height),
+                0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, s.img.raw.ptr,s.img.pitch * s.img.height
+            );
+        } else {
+            c.glTexImage2D(
+                c.GL_TEXTURE_2D, 0, c.GL_RGBA, @intCast(c_int, s.img.width), @intCast(c_int, s.img.height),
+                0, c.GL_RGBA,c.GL_UNSIGNED_BYTE, s.img.raw.ptr);
+        }
 
         c.glGenBuffers(1, &s.vertex_buffer);
         errdefer c.glDeleteBuffers(1, &s.vertex_buffer);

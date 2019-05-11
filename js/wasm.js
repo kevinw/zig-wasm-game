@@ -1,5 +1,6 @@
 var memory;
 
+const getRandomSeed = () => Math.floor(Math.random() * 2147483647);
 const getRandomString = () => Math.random().toString(36).substring(5, 15) + Math.random().toString(36).substring(5, 15);
 const consoleLog = (value) => console.log('consoleLog', value);
 const readCharStr = (ptr, len) => {
@@ -13,6 +14,8 @@ const readCharStr = (ptr, len) => {
 
 var wasm = {
     consoleLog,
+    getRandomSeed,
+    getRandomString,
     consoleLogF: consoleLog,
     consoleLogS: consoleLog,
     readCharStr,

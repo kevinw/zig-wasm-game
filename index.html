@@ -48,7 +48,8 @@
     const setScore = (score) => {
       document.getElementById("score").textContent = score.toString();
       if (score > highscore)
-        document.getElementById("highscore").textContent = score.toString();
+        highscore = score;
+        document.getElementById("highscore").textContent = highscore.toString();
     }
 
     const env = {
