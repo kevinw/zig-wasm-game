@@ -1,4 +1,4 @@
-use @import("math3d.zig");
+usingnamespace @import("math3d.zig");
 
 const std = @import("std");
 const os = std.os;
@@ -102,7 +102,7 @@ const hold_piece_top = level_display_top - margin_size - hold_piece_height;
 pub const window_width = next_piece_left + next_piece_width + margin_size;
 pub const window_height = board_top + board_height + margin_size;
 
-const board_color = Vec4{ .data = []f32{ 72.0 / 255.0, 72.0 / 255.0, 72.0 / 255.0, 1.0 } };
+const board_color = Vec4{ .data = [_]f32{ 72.0 / 255.0, 72.0 / 255.0, 72.0 / 255.0, 1.0 } };
 
 const init_piece_delay = 0.5;
 const min_piece_delay = 0.05;
@@ -114,8 +114,8 @@ pub const font_char_height = 32;
 const gravity = 0.14;
 const time_per_level = 60.0;
 
-const empty_row = []Cell{Cell{ .Empty = {} }} ** grid_width;
-const empty_grid = [][grid_width]Cell{empty_row} ** grid_height;
+const empty_row = [_]Cell{Cell{ .Empty = {} }} ** grid_width;
+const empty_grid = [_][grid_width]Cell{empty_row} ** grid_height;
 
 const AUDIO_BUFFER_SIZE = 2048;
 
@@ -123,7 +123,7 @@ const a: f32 = 0.1;
 
 var beep = blk: {
     @setEvalBranchQuota(AUDIO_BUFFER_SIZE * 2 + 1);
-    var b = []f32 { 0 } ** AUDIO_BUFFER_SIZE;
+    var b = [_]f32{0} ** AUDIO_BUFFER_SIZE;
     for (b) |*x, i| {
         x.* = if ((i / 64) % 2 == 1) a else -a;
     }
@@ -497,7 +497,7 @@ pub fn restartGame(t: *Tetris) void {
     t.hold_was_set = false;
     t.hold_piece = null;
 
-    t.piece_pool = []i32{1} ** pieces.pieces.len;
+    t.piece_pool = [_]i32{1} ** pieces.pieces.len;
 
     clearParticles(t);
     t.grid = empty_grid;
@@ -575,9 +575,9 @@ fn lockPiece(t: *Tetris) void {
         }
     }
 
-    const score_per_rows_deleted = []c_int{ 0, 10, 30, 50, 70 };
+    const score_per_rows_deleted = [_]c_int{ 0, 10, 30, 50, 70 };
     t.score += score_per_rows_deleted[rows_deleted];
-    
+
     if (c.is_web) c.setScore(t.score);
 
     if (rows_deleted > 0) {

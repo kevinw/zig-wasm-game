@@ -7,9 +7,9 @@ const c = @cImport({
     @cInclude("stdio.h");
 });
 
-pub use c;
+pub usingnamespace c;
 
-pub const std = @import("std"); 
+pub const std = @import("std");
 pub const allocator = std.heap.c_allocator;
 pub const panic = std.debug.panic;
 pub const Window = c.GLFWwindow;

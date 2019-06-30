@@ -2,7 +2,7 @@ const builtin = @import("builtin");
 const bufPrint = @import("std").fmt.bufPrint;
 
 pub const is_web = builtin.arch == builtin.Arch.wasm32;
-pub use if (is_web) @import("platform/web.zig") else @import("platform/c.zig");
+pub usingnamespace if (is_web) @import("platform/web.zig") else @import("platform/c.zig");
 
 pub extern fn setScore(_: c_int) void;
 pub extern fn playAudio(_: [*c]f32, _: c_uint) void;

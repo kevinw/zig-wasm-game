@@ -6,219 +6,232 @@ pub const Piece = struct {
     layout: [4][4][4]bool,
 };
 
-const _ = false;
+const x = false;
 const O = true;
 
-pub const pieces = []Piece {
-    Piece {
+pub const pieces = [_]Piece{
+    Piece{
         .name = 'I',
-        .color = Vec4 { .data = []f32{ 0.0/255.0, 255.0/255.0, 255.0/255.0, 1.0 }, },
-        .layout = [][4][4]bool {
-            [][4]bool {
-                []bool{ _, _, _, _ },
-                []bool{ _, _, _, _ },
-                []bool{ O, O, O, O },
-                []bool{ _, _, _, _ },
+        .color = Vec4{
+            .data = [_]f32{ 0.0 / 255.0, 255.0 / 255.0, 255.0 / 255.0, 1.0 },
+        },
+        .layout = [_][4][4]bool{
+            [_][4]bool{
+                [_]bool{ x, x, x, x },
+                [_]bool{ x, x, x, x },
+                [_]bool{ O, O, O, O },
+                [_]bool{ x, x, x, x },
             },
-            [][4]bool {
-                []bool{ _, O, _, _ },
-                []bool{ _, O, _, _ },
-                []bool{ _, O, _, _ },
-                []bool{ _, O, _, _ },
+            [_][4]bool{
+                [_]bool{ x, O, x, x },
+                [_]bool{ x, O, x, x },
+                [_]bool{ x, O, x, x },
+                [_]bool{ x, O, x, x },
             },
-            [][4]bool {
-                []bool{ _, _, _, _ },
-                []bool{ _, _, _, _ },
-                []bool{ O, O, O, O },
-                []bool{ _, _, _, _ },
+            [_][4]bool{
+                [_]bool{ x, x, x, x },
+                [_]bool{ x, x, x, x },
+                [_]bool{ O, O, O, O },
+                [_]bool{ x, x, x, x },
             },
-            [][4]bool {
-                []bool{ _, O, _, _ },
-                []bool{ _, O, _, _ },
-                []bool{ _, O, _, _ },
-                []bool{ _, O, _, _ },
+            [_][4]bool{
+                [_]bool{ x, O, x, x },
+                [_]bool{ x, O, x, x },
+                [_]bool{ x, O, x, x },
+                [_]bool{ x, O, x, x },
             },
         },
     },
-    Piece {
+    Piece{
         .name = 'O',
-        .color = Vec4 { .data = []f32{ 255.0/255.0, 255.0/255.0, 0.0/255.0, 1.0 }, },
-        .layout = [][4][4]bool {
-            [][4]bool {
-                []bool{ _, _, _, _ },
-                []bool{ _, _, _, _ },
-                []bool{ O, O, _, _ },
-                []bool{ O, O, _, _ },
+        .color = Vec4{
+            .data = [_]f32{ 255.0 / 255.0, 255.0 / 255.0, 0.0 / 255.0, 1.0 },
+        },
+        .layout = [_][4][4]bool{
+            [_][4]bool{
+                [_]bool{ x, x, x, x },
+                [_]bool{ x, x, x, x },
+                [_]bool{ O, O, x, x },
+                [_]bool{ O, O, x, x },
             },
-            [][4]bool {
-                []bool{ _, _, _, _ },
-                []bool{ _, _, _, _ },
-                []bool{ O, O, _, _ },
-                []bool{ O, O, _, _ },
+            [_][4]bool{
+                [_]bool{ x, x, x, x },
+                [_]bool{ x, x, x, x },
+                [_]bool{ O, O, x, x },
+                [_]bool{ O, O, x, x },
             },
-            [][4]bool {
-                []bool{ _, _, _, _ },
-                []bool{ _, _, _, _ },
-                []bool{ O, O, _, _ },
-                []bool{ O, O, _, _ },
+            [_][4]bool{
+                [_]bool{ x, x, x, x },
+                [_]bool{ x, x, x, x },
+                [_]bool{ O, O, x, x },
+                [_]bool{ O, O, x, x },
             },
-            [][4]bool {
-                []bool{ _, _, _, _ },
-                []bool{ _, _, _, _ },
-                []bool{ O, O, _, _ },
-                []bool{ O, O, _, _ },
+            [_][4]bool{
+                [_]bool{ x, x, x, x },
+                [_]bool{ x, x, x, x },
+                [_]bool{ O, O, x, x },
+                [_]bool{ O, O, x, x },
             },
         },
     },
-    Piece {
+    Piece{
         .name = 'T',
-        .color = Vec4 { .data = []f32{ 255.0/255.0, 0.0/255.0, 255.0/255.0, 1.0 }, },
-        .layout = [][4][4]bool {
-            [][4]bool {
-                []bool{ _, _, _, _ },
-                []bool{ _, _, _, _ },
-                []bool{ O, O, O, _ },
-                []bool{ _, O, _, _ },
+        .color = Vec4{
+            .data = [_]f32{ 255.0 / 255.0, 0.0 / 255.0, 255.0 / 255.0, 1.0 },
+        },
+        .layout = [_][4][4]bool{
+            [_][4]bool{
+                [_]bool{ x, x, x, x },
+                [_]bool{ x, x, x, x },
+                [_]bool{ O, O, O, x },
+                [_]bool{ x, O, x, x },
             },
-            [][4]bool {
-                []bool{ _, _, _, _ },
-                []bool{ _, O, _, _ },
-                []bool{ O, O, _, _ },
-                []bool{ _, O, _, _ },
+            [_][4]bool{
+                [_]bool{ x, x, x, x },
+                [_]bool{ x, O, x, x },
+                [_]bool{ O, O, x, x },
+                [_]bool{ x, O, x, x },
             },
-            [][4]bool {
-                []bool{ _, _, _, _ },
-                []bool{ _, O, _, _ },
-                []bool{ O, O, O, _ },
-                []bool{ _, _, _, _ },
+            [_][4]bool{
+                [_]bool{ x, x, x, x },
+                [_]bool{ x, O, x, x },
+                [_]bool{ O, O, O, x },
+                [_]bool{ x, x, x, x },
             },
-            [][4]bool {
-                []bool{ _, _, _, _ },
-                []bool{ _, O, _, _ },
-                []bool{ _, O, O, _ },
-                []bool{ _, O, _, _ },
+            [_][4]bool{
+                [_]bool{ x, x, x, x },
+                [_]bool{ x, O, x, x },
+                [_]bool{ x, O, O, x },
+                [_]bool{ x, O, x, x },
             },
         },
     },
-    Piece {
+    Piece{
         .name = 'J',
-        .color = Vec4 { .data = []f32{ 0.0/255.0, 0.0/255.0, 255.0/255.0, 1.0 }, },
-        .layout = [][4][4]bool {
-            [][4]bool {
-                []bool{ _, _, _, _ },
-                []bool{ _, O, _, _ },
-                []bool{ _, O, _, _ },
-                []bool{ O, O, _, _ },
+        .color = Vec4{
+            .data = [_]f32{ 0.0 / 255.0, 0.0 / 255.0, 255.0 / 255.0, 1.0 },
+        },
+        .layout = [_][4][4]bool{
+            [_][4]bool{
+                [_]bool{ x, x, x, x },
+                [_]bool{ x, O, x, x },
+                [_]bool{ x, O, x, x },
+                [_]bool{ O, O, x, x },
             },
-            [][4]bool {
-                []bool{ _, _, _, _ },
-                []bool{ O, _, _, _ },
-                []bool{ O, O, O, _ },
-                []bool{ _, _, _, _ },
+            [_][4]bool{
+                [_]bool{ x, x, x, x },
+                [_]bool{ O, x, x, x },
+                [_]bool{ O, O, O, x },
+                [_]bool{ x, x, x, x },
             },
-            [][4]bool {
-                []bool{ _, _, _, _ },
-                []bool{ _, O, O, _ },
-                []bool{ _, O, _, _ },
-                []bool{ _, O, _, _ },
+            [_][4]bool{
+                [_]bool{ x, x, x, x },
+                [_]bool{ x, O, O, x },
+                [_]bool{ x, O, x, x },
+                [_]bool{ x, O, x, x },
             },
-            [][4]bool {
-                []bool{ _, _, _, _ },
-                []bool{ _, _, _, _ },
-                []bool{ O, O, O, _ },
-                []bool{ _, _, O, _ },
+            [_][4]bool{
+                [_]bool{ x, x, x, x },
+                [_]bool{ x, x, x, x },
+                [_]bool{ O, O, O, x },
+                [_]bool{ x, x, O, x },
             },
         },
     },
-    Piece {
+    Piece{
         .name = 'L',
-        .color = Vec4 { .data = []f32{ 255.0/255.0, 128.0/255.0, 0.0/255.0, 1.0 }, },
-        .layout = [][4][4]bool {
-            [][4]bool {
-                []bool{ _, _, _, _ },
-                []bool{ _, O, _, _ },
-                []bool{ _, O, _, _ },
-                []bool{ _, O, O, _ },
+        .color = Vec4{
+            .data = [_]f32{ 255.0 / 255.0, 128.0 / 255.0, 0.0 / 255.0, 1.0 },
+        },
+        .layout = [_][4][4]bool{
+            [_][4]bool{
+                [_]bool{ x, x, x, x },
+                [_]bool{ x, O, x, x },
+                [_]bool{ x, O, x, x },
+                [_]bool{ x, O, O, x },
             },
-            [][4]bool {
-                []bool{ _, _, _, _ },
-                []bool{ _, _, _, _ },
-                []bool{ O, O, O, _ },
-                []bool{ O, _, _, _ },
+            [_][4]bool{
+                [_]bool{ x, x, x, x },
+                [_]bool{ x, x, x, x },
+                [_]bool{ O, O, O, x },
+                [_]bool{ O, x, x, x },
             },
-            [][4]bool {
-                []bool{ _, _, _, _ },
-                []bool{ O, O, _, _ },
-                []bool{ _, O, _, _ },
-                []bool{ _, O, _, _ },
+            [_][4]bool{
+                [_]bool{ x, x, x, x },
+                [_]bool{ O, O, x, x },
+                [_]bool{ x, O, x, x },
+                [_]bool{ x, O, x, x },
             },
-            [][4]bool {
-                []bool{ _, _, _, _ },
-                []bool{ _, _, O, _ },
-                []bool{ O, O, O, _ },
-                []bool{ _, _, _, _ },
+            [_][4]bool{
+                [_]bool{ x, x, x, x },
+                [_]bool{ x, x, O, x },
+                [_]bool{ O, O, O, x },
+                [_]bool{ x, x, x, x },
             },
         },
     },
-    Piece {
+    Piece{
         .name = 'S',
-        .color = Vec4 { .data = []f32{ 0.0/255.0, 255.0/255.0, 0.0/255.0, 1.0 }, },
-        .layout = [][4][4]bool {
-            [][4]bool {
-                []bool{ _, _, _, _ },
-                []bool{ _, _, _, _ },
-                []bool{ _, O, O, _ },
-                []bool{ O, O, _, _ },
+        .color = Vec4{
+            .data = [_]f32{ 0.0 / 255.0, 255.0 / 255.0, 0.0 / 255.0, 1.0 },
+        },
+        .layout = [_][4][4]bool{
+            [_][4]bool{
+                [_]bool{ x, x, x, x },
+                [_]bool{ x, x, x, x },
+                [_]bool{ x, O, O, x },
+                [_]bool{ O, O, x, x },
             },
-            [][4]bool {
-                []bool{ _, _, _, _ },
-                []bool{ O, _, _, _ },
-                []bool{ O, O, _, _ },
-                []bool{ _, O, _, _ },
+            [_][4]bool{
+                [_]bool{ x, x, x, x },
+                [_]bool{ O, x, x, x },
+                [_]bool{ O, O, x, x },
+                [_]bool{ x, O, x, x },
             },
-            [][4]bool {
-                []bool{ _, _, _, _ },
-                []bool{ _, _, _, _ },
-                []bool{ _, O, O, _ },
-                []bool{ O, O, _, _ },
+            [_][4]bool{
+                [_]bool{ x, x, x, x },
+                [_]bool{ x, x, x, x },
+                [_]bool{ x, O, O, x },
+                [_]bool{ O, O, x, x },
             },
-            [][4]bool {
-                []bool{ _, _, _, _ },
-                []bool{ O, _, _, _ },
-                []bool{ O, O, _, _ },
-                []bool{ _, O, _, _ },
+            [_][4]bool{
+                [_]bool{ x, x, x, x },
+                [_]bool{ O, x, x, x },
+                [_]bool{ O, O, x, x },
+                [_]bool{ x, O, x, x },
             },
         },
     },
-    Piece {
+    Piece{
         .name = 'Z',
-        .color = Vec4 { .data = []f32{ 255.0/255.0, 0.0/255.0, 0.0/255.0, 1.0 }, },
-        .layout = [][4][4]bool {
-            [][4]bool {
-                []bool{ _, _, _, _ },
-                []bool{ _, _, _, _ },
-                []bool{ O, O, _, _ },
-                []bool{ _, O, O, _ },
+        .color = Vec4{
+            .data = [_]f32{ 255.0 / 255.0, 0.0 / 255.0, 0.0 / 255.0, 1.0 },
+        },
+        .layout = [_][4][4]bool{
+            [_][4]bool{
+                [_]bool{ x, x, x, x },
+                [_]bool{ x, x, x, x },
+                [_]bool{ O, O, x, x },
+                [_]bool{ x, O, O, x },
             },
-            [][4]bool {
-                []bool{ _, _, _, _ },
-                []bool{ _, _, O, _ },
-                []bool{ _, O, O, _ },
-                []bool{ _, O, _, _ },
+            [_][4]bool{
+                [_]bool{ x, x, x, x },
+                [_]bool{ x, x, O, x },
+                [_]bool{ x, O, O, x },
+                [_]bool{ x, O, x, x },
             },
-            [][4]bool {
-                []bool{ _, _, _, _ },
-                []bool{ _, _, _, _ },
-                []bool{ O, O, _, _ },
-                []bool{ _, O, O, _ },
+            [_][4]bool{
+                [_]bool{ x, x, x, x },
+                [_]bool{ x, x, x, x },
+                [_]bool{ O, O, x, x },
+                [_]bool{ x, O, O, x },
             },
-            [][4]bool {
-                []bool{ _, _, _, _ },
-                []bool{ _, _, O, _ },
-                []bool{ _, O, O, _ },
-                []bool{ _, O, _, _ },
+            [_][4]bool{
+                [_]bool{ x, x, x, x },
+                [_]bool{ x, x, O, x },
+                [_]bool{ x, O, O, x },
+                [_]bool{ x, O, x, x },
             },
         },
     },
 };
-

@@ -46,28 +46,23 @@ pub const Spritesheet = struct {
         c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, c.GL_CLAMP_TO_EDGE);
         c.glPixelStorei(c.GL_PACK_ALIGNMENT, 4);
         if (c.is_web) {
-            c.glTexImage2D(
-                c.GL_TEXTURE_2D, 0, c.GL_RGBA, @intCast(c_int, s.img.width), @intCast(c_int, s.img.height),
-                0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, s.img.raw.ptr,s.img.pitch * s.img.height
-            );
+            c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_RGBA, @intCast(c_int, s.img.width), @intCast(c_int, s.img.height), 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, s.img.raw.ptr, s.img.pitch * s.img.height);
         } else {
-            c.glTexImage2D(
-                c.GL_TEXTURE_2D, 0, c.GL_RGBA, @intCast(c_int, s.img.width), @intCast(c_int, s.img.height),
-                0, c.GL_RGBA,c.GL_UNSIGNED_BYTE, s.img.raw.ptr);
+            c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_RGBA, @intCast(c_int, s.img.width), @intCast(c_int, s.img.height), 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, s.img.raw.ptr);
         }
 
         c.glGenBuffers(1, &s.vertex_buffer);
         errdefer c.glDeleteBuffers(1, &s.vertex_buffer);
 
-        const vertexes = [][3]c.GLfloat{
-            []c.GLfloat{ 0.0, 0.0, 0.0 },
-            []c.GLfloat{ 0.0, @intToFloat(c.GLfloat, h), 0.0 },
-            []c.GLfloat{ @intToFloat(c.GLfloat, w), 0.0, 0.0 },
-            []c.GLfloat{ @intToFloat(c.GLfloat, w), @intToFloat(c.GLfloat, h), 0.0 },
+        const vertexes = [_][3]c.GLfloat{
+            [_]c.GLfloat{ 0.0, 0.0, 0.0 },
+            [_]c.GLfloat{ 0.0, @intToFloat(c.GLfloat, h), 0.0 },
+            [_]c.GLfloat{ @intToFloat(c.GLfloat, w), 0.0, 0.0 },
+            [_]c.GLfloat{ @intToFloat(c.GLfloat, w), @intToFloat(c.GLfloat, h), 0.0 },
         };
 
         c.glBindBuffer(c.GL_ARRAY_BUFFER, s.vertex_buffer);
-        c.glBufferData(c.GL_ARRAY_BUFFER, 4 * 3 * @sizeOf(c.GLfloat), &vertexes[0][0],  c.GL_STATIC_DRAW);
+        c.glBufferData(c.GL_ARRAY_BUFFER, 4 * 3 * @sizeOf(c.GLfloat), &vertexes[0][0], c.GL_STATIC_DRAW);
 
         s.tex_coord_buffers = allocator.alloc(c.GLuint, s.count) catch return error.NoMem;
         errdefer allocator.free(s.tex_coord_buffers);
@@ -85,27 +80,27 @@ pub const Spritesheet = struct {
 
             const img_w = @intToFloat(f32, s.img.width);
             const img_h = @intToFloat(f32, s.img.height);
-            const tex_coords = [][2]c.GLfloat{
-                []c.GLfloat{
+            const tex_coords = [_][2]c.GLfloat{
+                [_]c.GLfloat{
                     x / img_w,
                     (y + @intToFloat(f32, h)) / img_h,
                 },
-                []c.GLfloat{
+                [_]c.GLfloat{
                     x / img_w,
                     y / img_h,
                 },
-                []c.GLfloat{
+                [_]c.GLfloat{
                     (x + @intToFloat(f32, w)) / img_w,
                     (y + @intToFloat(f32, h)) / img_h,
                 },
-                []c.GLfloat{
+                [_]c.GLfloat{
                     (x + @intToFloat(f32, w)) / img_w,
                     y / img_h,
                 },
             };
 
             c.glBindBuffer(c.GL_ARRAY_BUFFER, tex_coord_buffer);
-            c.glBufferData(c.GL_ARRAY_BUFFER, 4 * 2 * @sizeOf(c.GLfloat),  &tex_coords[0][0], c.GL_STATIC_DRAW);
+            c.glBufferData(c.GL_ARRAY_BUFFER, 4 * 2 * @sizeOf(c.GLfloat), &tex_coords[0][0], c.GL_STATIC_DRAW);
         }
     }
 
