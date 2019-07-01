@@ -17,18 +17,15 @@
       <div class="col">
         <div class="wrapper">
           <canvas id="canvasgl" width="800" height="450"></canvas>
-          <canvas id="canvas2d" class="overlay" width="800" height="450"></canvas>
         </div>
       </div>
     </div>
   </div>
   <script>
-    var $canvas = document.getElementById("canvas2d");
     var $webgl = document.getElementById("canvasgl");
   </script>
   <script src="js/dom.js"></script>
   <script src="js/audio.js"></script>
-  <script src="js/canvas.js"></script>
   <script src="js/webgl.js"></script>
   <script src="js/wasm.js"></script>
   <script>
@@ -44,7 +41,6 @@
         const env = {
           ...wasm,
           ...audio,
-          ...canvas,
           ...zigdom,
           ...webgl,
           setScore

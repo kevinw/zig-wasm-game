@@ -44,9 +44,9 @@ pub const AllShaders = struct {
             \\}
         , null);
 
-        as.primitive_attrib_position = as.primitive.attribLocation("VertexPosition\x00");
-        as.primitive_uniform_mvp = as.primitive.uniformLocation("MVP\x00");
-        as.primitive_uniform_color = as.primitive.uniformLocation("Color\x00");
+        as.primitive_attrib_position = as.primitive.attribLocation(c"VertexPosition");
+        as.primitive_uniform_mvp = as.primitive.uniformLocation(c"MVP");
+        as.primitive_uniform_color = as.primitive.uniformLocation(c"Color");
 
         as.texture = ShaderProgram.create(
             \\#version 300 es
@@ -70,10 +70,10 @@ pub const AllShaders = struct {
             \\}
         , null);
 
-        as.texture_attrib_tex_coord = as.texture.attribLocation("TexCoord\x00");
-        as.texture_attrib_position = as.texture.attribLocation("VertexPosition\x00");
-        as.texture_uniform_mvp = as.texture.uniformLocation("MVP\x00");
-        as.texture_uniform_tex = as.texture.uniformLocation("Tex\x00");
+        as.texture_attrib_tex_coord = as.texture.attribLocation(c"TexCoord");
+        as.texture_attrib_position = as.texture.attribLocation(c"VertexPosition");
+        as.texture_uniform_mvp = as.texture.uniformLocation(c"MVP");
+        as.texture_uniform_tex = as.texture.uniformLocation(c"Tex");
 
         debug_gl.assertNoError();
 
@@ -152,8 +152,8 @@ pub const ShaderProgram = struct {
         maybe_geometry_source: ?[]u8,
     ) ShaderProgram {
         var sp: ShaderProgram = undefined;
-        sp.vertex_id = c.initShader(vertex_source, "vertex\x00", c.GL_VERTEX_SHADER);
-        sp.fragment_id = c.initShader(frag_source, "fragment\x00", c.GL_FRAGMENT_SHADER);
+        sp.vertex_id = c.initShader(vertex_source, c"vertex", c.GL_VERTEX_SHADER);
+        sp.fragment_id = c.initShader(frag_source, c"fragment", c.GL_FRAGMENT_SHADER);
         sp.program_id = c.linkShaderProgram(sp.vertex_id, sp.fragment_id, null);
         debug_gl.assertNoError();
         return sp;

@@ -1,10 +1,8 @@
 const wasm = @import("web/wasm.zig");
 // const dom = @import("web/dom.zig");
-const canvas = @import("web/canvas.zig");
 const webgl = @import("web/webgl.zig");
 
 pub usingnamespace @import("web/wasm.zig");
-pub usingnamespace @import("web/canvas.zig");
 pub usingnamespace @import("web/webgl.zig");
 
 const builtin = @import("builtin");
