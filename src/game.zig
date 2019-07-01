@@ -4,7 +4,7 @@ const std = @import("std");
 const os = std.os;
 const c = @import("platform.zig");
 const panic = c.panic;
-const assert = std.debug.assert;
+//const assert = std.debug.assert;
 const bufPrint = std.fmt.bufPrint;
 const debug_gl = @import("debug_gl.zig");
 const AllShaders = @import("all_shaders.zig").AllShaders;
@@ -14,9 +14,11 @@ const pieces = @import("pieces.zig");
 const Piece = pieces.Piece;
 const Spritesheet = @import("spritesheet.zig").Spritesheet;
 const embedImage = @import("png.zig").embedImage;
+const DebugConsole = @import("debug_console.zig").DebugConsole;
 
 pub const Tetris = struct {
     window: *c.Window,
+    debug_console: DebugConsole,
     all_shaders: AllShaders,
     static_geometry: StaticGeometry,
     projection: Mat4x4,
@@ -168,17 +170,16 @@ fn drawParticle(t: *Tetris, p: Particle) void {
 
 fn drawFallingBlock(t: *Tetris, p: Particle) void {
     const model = mat4x4_identity.translateByVec(p.pos).rotate(p.angle, p.axis).scale(p.scale_w, p.scale_h, 0.0);
-
     const mvp = t.projection.mult(model);
-
     fillRectMvp(t, p.color, mvp);
 }
 
-fn drawCenteredText(t: *Tetris, text: []const u8) void {
-    const label_width = font_char_width * @intCast(i32, text.len);
+fn drawCenteredText(t: *Tetris, text: []const u8, scale: f32) void {
+    const len = @intToFloat(f32, text.len) * scale;
+    const label_width = font_char_width * @floatToInt(i32, len);
     const draw_left = board_left + board_width / 2 - @divExact(label_width, 2);
     const draw_top = board_top + board_height / 2 - font_char_height / 2;
-    drawText(t, text, draw_left, draw_top, 1.0);
+    drawText(t, text, draw_left, draw_top, scale);
 }
 
 pub fn draw(t: *Tetris) void {
@@ -189,10 +190,12 @@ pub fn draw(t: *Tetris) void {
     fillRect(t, board_color, hold_piece_left, hold_piece_top, hold_piece_width, hold_piece_height);
 
     if (t.game_over) {
-        drawCenteredText(t, "GAME OVER");
+        drawCenteredText(t, "GAME OVER", 1.0);
     } else if (t.is_paused) {
-        drawCenteredText(t, "PAUSED");
+        drawCenteredText(t, "PAUSED", 1.0);
     } else {
+        drawCenteredText(t, "PLAYING!", 4.0);
+
         const abs_x = board_left + t.cur_piece_x * cell_size;
         const abs_y = board_top + t.cur_piece_y * cell_size;
         drawPiece(t, t.cur_piece.*, abs_x, abs_y, t.cur_piece_rot);
@@ -277,10 +280,12 @@ pub fn draw(t: *Tetris) void {
         }
     }
 
+    t.debug_console.draw(t);
+
     debug_gl.assertNoError();
 }
 
-fn drawText(t: *Tetris, text: []const u8, left: i32, top: i32, size: f32) void {
+pub fn drawText(t: *const Tetris, text: []const u8, left: i32, top: i32, size: f32) void {
     for (text) |col, i| {
         if (col <= '~') {
             const char_left = @intToFloat(f32, left) + @intToFloat(f32, i * font_char_width) * size;
@@ -373,6 +378,8 @@ pub fn nextFrame(t: *Tetris, elapsed: f64) void {
             );
         }
     }
+
+    t.debug_console.update(elapsed);
 }
 
 fn levelUp(t: *Tetris) void {
@@ -484,6 +491,10 @@ pub fn userTogglePause(t: *Tetris) void {
     t.is_paused = !t.is_paused;
 }
 
+pub fn logMessage(t: *Tetris) void {
+    t.debug_console.log("foobarmeep");
+}
+
 pub fn restartGame(t: *Tetris) void {
     t.piece_delay = init_piece_delay;
     t.delay_left = init_piece_delay;
@@ -504,12 +515,16 @@ pub fn restartGame(t: *Tetris) void {
 
     populateNextPiece(t);
     dropNextPiece(t);
+
+    t.debug_console.init();
+    t.debug_console.log("this is a test first message");
+    t.debug_console.log("this is a test SECOND message");
 }
 
 fn lockPiece(t: *Tetris) void {
     t.score += 1;
 
-    if (c.is_web) c.playAudio(&beep[0], AUDIO_BUFFER_SIZE);
+    //if (c.is_web) c.playAudio(&beep[0], AUDIO_BUFFER_SIZE);
 
     for (t.cur_piece.layout[t.cur_piece_rot]) |row, y| {
         for (row) |is_filled, x| {

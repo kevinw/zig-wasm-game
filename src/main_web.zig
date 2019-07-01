@@ -14,46 +14,39 @@ const StaticGeometry = @import("static_geometry.zig").StaticGeometry;
 const RawImage = @import("png.zig").RawImage;
 const embedImage = @import("png.zig").embedImage;
 
-const font_raw = embedImage("../assets/fontx.bin",  576, 128, 32);
+const font_raw = embedImage("../assets/fontx.bin", 576, 128, 32);
 
 export fn onKeyDown(keyCode: c_int, state: u8) void {
-  if (state == 0) return;
-  const t = &game.tetris_state;
-  switch (keyCode) {
-      c.KEY_ESCAPE, c.KEY_P => game.userTogglePause(t),
-      c.KEY_SPACE => game.userDropCurPiece(t),
-      c.KEY_DOWN => game.userCurPieceFall(t),
-      c.KEY_LEFT => game.userMoveCurPiece(t, -1),
-      c.KEY_RIGHT => game.userMoveCurPiece(t, 1),
-      c.KEY_UP => game.userRotateCurPiece(t, 1),
-      c.KEY_SHIFT => game.userRotateCurPiece(t, -1),
-      c.KEY_R => game.restartGame(t),
-      c.KEY_CTRL => game.userSetHoldPiece(t),
-      else => {},
-  }
+    if (state == 0) return;
+    const t = &game.tetris_state;
+    switch (keyCode) {
+        c.KEY_ESCAPE, c.KEY_P => game.userTogglePause(t),
+        c.KEY_SPACE => game.userDropCurPiece(t),
+        c.KEY_DOWN => game.userCurPieceFall(t),
+        c.KEY_LEFT => game.userMoveCurPiece(t, -1),
+        c.KEY_RIGHT => game.userMoveCurPiece(t, 1),
+        c.KEY_UP => game.userRotateCurPiece(t, 1),
+        c.KEY_SHIFT => game.userRotateCurPiece(t, -1),
+        c.KEY_R => game.restartGame(t),
+        c.KEY_CTRL => game.userSetHoldPiece(t),
+        c.KEY_L => game.logMessage(t),
+        else => {},
+    }
 }
 
-export fn onKeyUp(button: c_int, x: c_int, y: c_int) void {
+export fn onKeyUp(button: c_int, x: c_int, y: c_int) void {}
 
-}
+export fn onMouseDown(button: c_int, x: c_int, y: c_int) void {}
 
-export fn onMouseDown(button: c_int, x: c_int, y: c_int) void {
+export fn onMouseUp(button: c_int, x: c_int, y: c_int) void {}
 
-}
-
-export fn onMouseUp(button: c_int, x: c_int, y: c_int) void {
-
-}
-
-export fn onMouseMove(x: c_int, y: c_int) void {
-
-}
+export fn onMouseMove(x: c_int, y: c_int) void {}
 
 var vertex_array_object: c.GLuint = undefined;
 export fn onInit() void {
     const t = &game.tetris_state;
-    t.framebuffer_width = 500;
-    t.framebuffer_height = 660;
+    t.framebuffer_width = 800;
+    t.framebuffer_height = 450;
 
     c.glGenVertexArrays(1, &vertex_array_object);
     c.glBindVertexArray(vertex_array_object);

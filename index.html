@@ -8,28 +8,16 @@
 </head>
 
 <body>
+  <div>
+    <p>You've scored <span id="score">0</span> point! Your high score is <span id="highscore">0</span></p>
+  </div>
 
   <div class="page">
     <div class="container">
       <div class="col">
-        <h1>Tetris</h1>
-        <p>A simple tetris clone written in the <a href="http://ziglang.org">Zig</a> programming language, running on
-          WebGL and WASM. <a href="https://github.com/raulgrell/tetris">Source</a>.</p>
-        <p><span class="control-label">← ↓ →</span>Move</p>
-        <p><span class="control-label">↑</span>Rotate CW</p>
-        <p><span class="control-label">Shift</span>Rotate CCW</p>
-        <p><span class="control-label">Ctrl</span>Hold</p>
-        <p><span class="control-label">Space</span>Drop</p>
-        <p><span class="control-label">R</span>Restart</p>
-        <p><span class="control-label">P</span>Pause</p>
-
-        <p>You've scored <span id="score">0</span> point!</p>
-        <p>Your high score is <span id="highscore">0</span></p>
-      </div>
-      <div class="col">
         <div class="wrapper">
-          <canvas id="canvasgl" width="500" height="660"></canvas>
-          <canvas id="canvas2d" class="overlay" width="500" height="660"></canvas>
+          <canvas id="canvasgl" width="800" height="450"></canvas>
+          <canvas id="canvas2d" class="overlay" width="800" height="450"></canvas>
         </div>
       </div>
     </div>
@@ -44,43 +32,45 @@
   <script src="js/webgl.js"></script>
   <script src="js/wasm.js"></script>
   <script>
-    let highscore = 0;
-    const setScore = (score) => {
-      document.getElementById("score").textContent = score.toString();
-      if (score > highscore)
-        highscore = score;
-        document.getElementById("highscore").textContent = highscore.toString();
+    function startGame() {
+        let highscore = 0;
+        const setScore = (score) => {
+          document.getElementById("score").textContent = score.toString();
+          if (score > highscore)
+            highscore = score;
+            document.getElementById("highscore").textContent = highscore.toString();
+        }
+
+        const env = {
+          ...wasm,
+          ...audio,
+          ...canvas,
+          ...zigdom,
+          ...webgl,
+          setScore
+        }
+
+        fetchAndInstantiate('main_web.wasm', { env }).then(instance => {
+          memory = instance.exports.memory;
+          instance.exports.onInit();
+
+          const onAnimationFrame = instance.exports.onAnimationFrame;
+
+          document.addEventListener('keydown', e => instance.exports.onKeyDown(e.keyCode, 1));
+          document.addEventListener('keyup', e => instance.exports.onKeyUp(e.keyCode, 0));
+          document.addEventListener('mousedown', e => instance.exports.onMouseDown(e.button, e.x, e.y));
+          document.addEventListener('mouseup', e => instance.exports.onMouseUp(e.button, e.x, e.y));
+          document.addEventListener('mousemove', e => instance.exports.onMouseMove(e.x, e.y));
+          document.addEventListener('resize', e => instance.exports.onResize(e.width, e.height));
+
+          function step(timestamp) {
+            onAnimationFrame(timestamp);
+            window.requestAnimationFrame(step);
+          }
+
+          window.requestAnimationFrame(step);
+        });
     }
-
-    const env = {
-      ...wasm,
-      ...audio,
-      ...canvas,
-      ...zigdom,
-      ...webgl,
-      setScore
-    }
-
-    fetchAndInstantiate('main_web.wasm', { env }).then(instance => {
-      memory = instance.exports.memory;
-      instance.exports.onInit();
-
-      const onAnimationFrame = instance.exports.onAnimationFrame;
-
-      document.addEventListener('keydown', e => instance.exports.onKeyDown(e.keyCode, 1));
-      document.addEventListener('keyup', e => instance.exports.onKeyUp(e.keyCode, 0));
-      document.addEventListener('mousedown', e => instance.exports.onMouseDown(e.button, e.x, e.y));
-      document.addEventListener('mouseup', e => instance.exports.onMouseUp(e.button, e.x, e.y));
-      document.addEventListener('mousemove', e => instance.exports.onMouseMove(e.x, e.y));
-      document.addEventListener('resize', e => instance.exports.onResize(e.width, e.height));
-
-      function step(timestamp) {
-        onAnimationFrame(timestamp);
-        window.requestAnimationFrame(step);
-      }
-
-      window.requestAnimationFrame(step);
-    });
 
     function fetchAndInstantiate(url, importObject) {
       return fetch(url)
@@ -88,6 +78,8 @@
         .then(bytes => WebAssembly.instantiate(bytes, importObject))
         .then(results => results.instance);
     }
+
+    startGame();
   </script>
 </body>
 
