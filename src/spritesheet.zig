@@ -1,6 +1,6 @@
 const c = @import("platform.zig");
 const AllShaders = @import("all_shaders.zig").AllShaders;
-const Mat4x4 = @import("math3d.zig").Mat4x4;
+usingnamespace @import("math3d.zig");
 const allocator = c.allocator;
 const RawImage = @import("png.zig").RawImage;
 
@@ -10,11 +10,15 @@ pub const Spritesheet = struct {
     texture_id: c.GLuint,
     vertex_buffer: c.GLuint,
     tex_coord_buffers: []c.GLuint,
+    did_init: bool,
 
-    pub fn draw(s: *const Spritesheet, as: AllShaders, index: usize, mvp: Mat4x4) void {
+    pub fn draw(s: *const Spritesheet, as: AllShaders, index: usize, mvp: Mat4x4, color: Vec4) void {
+        if (!s.did_init) return;
+
         as.texture.bind();
         as.texture.setUniformMat4x4(as.texture_uniform_mvp, mvp);
         as.texture.setUniformInt(as.texture_uniform_tex, 0);
+        as.texture.setUniformVec4(as.texture_uniform_tint, color);
 
         c.glBindBuffer(c.GL_ARRAY_BUFFER, s.vertex_buffer);
         c.glEnableVertexAttribArray(@intCast(c.GLuint, as.texture_attrib_position));
@@ -31,9 +35,12 @@ pub const Spritesheet = struct {
     }
 
     pub fn init(s: *Spritesheet, raw_img: RawImage, w: usize, h: usize) !void {
+        s.did_init = true;
         s.img = raw_img;
         const col_count = s.img.width / w;
         const row_count = s.img.height / h;
+        if (col_count == 0) @panic("col_count cannot be zero");
+        if (row_count == 0) @panic("row_count cannot be zero");
         s.count = col_count * row_count;
 
         c.glGenTextures(1, &s.texture_id);

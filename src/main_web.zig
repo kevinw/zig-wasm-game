@@ -1,9 +1,17 @@
 const std = @import("std");
 const assert = std.debug.assert;
 const os = std.os;
+const builtin = @import("builtin");
 
-pub const allocator = std.heap.c_allocator;
-pub const panic = std.debug.panic;
+//pub const allocator = std.heap.c_allocator;
+//pub const panic = std.debug.panic;
+
+// until std has better wasm panic
+pub fn panic(msg: []const u8, error_return_trace: ?*builtin.StackTrace) noreturn {
+    while (true) {
+        @breakpoint();
+    }
+}
 
 const c = @import("platform.zig");
 
@@ -11,8 +19,8 @@ const game = @import("game.zig");
 const debug_gl = @import("debug_gl.zig");
 const AllShaders = @import("all_shaders.zig").AllShaders;
 const StaticGeometry = @import("static_geometry.zig").StaticGeometry;
-const RawImage = @import("png.zig").RawImage;
 const embedImage = @import("png.zig").embedImage;
+const RawImage = @import("png.zig").RawImage;
 
 const font_raw = embedImage("../assets/fontx.bin", 576, 128, 32);
 
@@ -42,6 +50,24 @@ export fn onMouseUp(button: c_int, x: c_int, y: c_int) void {}
 
 export fn onMouseMove(x: c_int, y: c_int) void {}
 
+export fn onFetch(width: c_uint, height: c_uint, bytes_ptr: c_uint, bytes_len: c_uint) void {
+    //c.log("FROM WASM ON FETCH {} {}", bytes_ptr, bytes_len);
+    if (bytes_len > 0 and bytes_ptr > 0) {
+        var rawSlice = @intToPtr([*]u8, bytes_ptr);
+        var slice = rawSlice[0..bytes_len];
+        //c.log("got slice: '{}'", slice.len);
+        const raw_image = RawImage{
+            .width = width,
+            .height = height,
+            .pitch = bytes_len / height,
+            .raw = slice,
+        };
+        game.tetris_state.player.init(raw_image, 48, 48) catch |err| {
+            c.log("error initializing player sprite {}", err);
+        };
+    }
+}
+
 var vertex_array_object: c.GLuint = undefined;
 export fn onInit() void {
     const t = &game.tetris_state;
@@ -70,6 +96,12 @@ export fn onInit() void {
     c.glViewport(0, 0, t.framebuffer_width, t.framebuffer_height);
 
     debug_gl.assertNoError();
+
+    fetchBytes("assets/face.png");
+}
+
+pub fn fetchBytes(url: []const u8) void {
+    c.fetchBytes(url.ptr, url.len);
 }
 
 var prev_time: c_int = 0;
@@ -89,5 +121,6 @@ export fn onDestroy() void {
     t.all_shaders.destroy();
     t.static_geometry.destroy();
     t.font.deinit();
+    //t.player.deinit();
     c.glDeleteVertexArrays(1, &vertex_array_object);
 }

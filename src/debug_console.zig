@@ -2,6 +2,9 @@ usingnamespace @import("math3d.zig");
 const CappedArrayList = @import("capped_array_list.zig").CappedArrayList;
 const Spritesheet = @import("spritesheet.zig").Spritesheet;
 const game = @import("game.zig");
+const game_math = @import("game_math.zig");
+const c = @import("platform.zig");
+const assert = @import("std").debug.assert;
 
 const MAX_ENTRIES = 10;
 
@@ -18,7 +21,13 @@ pub const DebugConsole = struct {
     entries: CappedArrayList(ConsoleEntry, MAX_ENTRIES),
     now: f64,
 
-    pub fn init(self: *Self) void {
+    pub fn init() DebugConsole {
+        var console: DebugConsole = undefined;
+        console.reset();
+        return console;
+    }
+
+    pub fn reset(self: *Self) void {
         self.now = 0;
         self.entries.len = 0;
     }
@@ -26,10 +35,16 @@ pub const DebugConsole = struct {
     pub fn destroy(self: *Self) void {}
 
     pub fn log(self: *Self, message: []const u8) void {
+        while (self.entries.len == MAX_ENTRIES) {
+            _ = self.entries.orderedRemove(0);
+        }
+
         self.entries.append(ConsoleEntry{
             .time = self.now,
             .message = message,
-        }) catch unreachable;
+        }) catch {
+            c.log("error: log full!");
+        };
     }
 
     pub fn update(self: *Self, dt: f64) void {
@@ -40,7 +55,9 @@ pub const DebugConsole = struct {
         for (self.entries.toSliceConst()) |*entry| {
             const elapsed = self.now - entry.time;
             if (elapsed < time_visible) {
-                new_entries.append(entry.*) catch unreachable;
+                new_entries.append(entry.*) catch {
+                    c.log("error: log was bigger than we expected");
+                };
             }
         }
 
@@ -52,18 +69,25 @@ pub const DebugConsole = struct {
 
         var x: i32 = 10;
         var y: i32 = 10;
+        var color = vec4(1, 1, 1, 1);
 
         for (self.entries.toSliceConst()) |*entry| {
             const elapsed = self.now - entry.time;
-            const alpha = alphaForTime(elapsed);
-            //color.a = alpha;
-            //font.draw_text(entry.message, x, y, font_size, color);
-            game.drawText(t, entry.message, x, y, font_size);
+            const alpha = alphaForTime(@floatCast(f32, elapsed));
+            color.data[3] = alpha;
+            game.drawTextWithColor(t, entry.message, x, y, font_size, color);
             y += game.font_char_height;
         }
     }
 
-    fn alphaForTime(elapsed: f64) u8 {
-        return 255;
+    fn alphaForTime(elapsed: f32) f32 {
+        return 1.0 - game_math.saturate(game_math.unlerp(elapsed, time_visible - 0.5, time_visible));
     }
 };
+
+test "overflowing the buffer" {
+    var d = DebugConsole.init();
+    d.log("foo");
+    d.log("bar");
+    d.log("meep");
+}

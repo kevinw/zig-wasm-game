@@ -28,6 +28,7 @@
   <script src="js/audio.js"></script>
   <script src="js/webgl.js"></script>
   <script src="js/wasm.js"></script>
+  <script src="js/loader.js"></script>
   <script>
     function startGame() {
         let highscore = 0;
@@ -48,6 +49,7 @@
 
         fetchAndInstantiate('main_web.wasm', { env }).then(instance => {
           memory = instance.exports.memory;
+          exports = instance.exports;
           instance.exports.onInit();
 
           const onAnimationFrame = instance.exports.onAnimationFrame;
@@ -68,12 +70,6 @@
         });
     }
 
-    function fetchAndInstantiate(url, importObject) {
-      return fetch(url)
-        .then(response => response.arrayBuffer())
-        .then(bytes => WebAssembly.instantiate(bytes, importObject))
-        .then(results => results.instance);
-    }
 
     startGame();
   </script>

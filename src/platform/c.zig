@@ -7,15 +7,16 @@ const c = @cImport({
     @cInclude("stdio.h");
 });
 
+usingnamespace c;
 pub usingnamespace c;
 
 pub const std = @import("std");
 pub const allocator = std.heap.c_allocator;
 pub const panic = std.debug.panic;
-pub const Window = c.GLFWwindow;
+pub const Window = GLFWwindow;
 
-pub fn initShader(source: []const u8, name: []const u8, kind: c.GLenum) c.GLuint {
-    const shader_id = c.glCreateShader(kind);
+pub fn initShader(source: []const u8, name: []const u8, kind: c.GLenum) GLuint {
+    const shader_id = glCreateShader(kind);
     const source_ptr: ?[*]const u8 = source.ptr;
     const source_len = @intCast(c.GLint, source.len);
     c.glShaderSource(shader_id, 1, &source_ptr, &source_len);
