@@ -1,5 +1,5 @@
 // Shaders
-pub extern fn glInitShader(source: [*]const u8 , len: c_uint, type: c_uint) c_uint;
+pub extern fn glInitShader(source: [*]const u8, len: c_uint, type: c_uint) c_uint;
 pub extern fn glLinkShaderProgram(vertexShaderId: c_uint, fragmentShaderId: c_uint) c_uint;
 
 // GL
@@ -73,7 +73,7 @@ pub const GL_TEXTURE0: c_uint = 33984;
 pub const GL_BLEND: c_uint = 3042;
 pub const GL_SRC_ALPHA: c_uint = 770;
 pub const GL_ONE_MINUS_SRC_ALPHA: c_uint = 771;
-pub const GL_ONE: c_uint= 1;
+pub const GL_ONE: c_uint = 1;
 pub const GL_NO_ERROR = 0;
 pub const GL_FALSE = 0;
 pub const GL_TRUE = 1;
@@ -85,9 +85,9 @@ pub const GL_TEXTURE_WRAP_T = 10243;
 pub const GL_PACK_ALIGNMENT = 3333;
 
 const AUDIO_BUFFER_SIZE = 8192;
-var beep = []f32 { 0 } ** AUDIO_BUFFER_SIZE;
-var boop = []f32 { 0 } ** AUDIO_BUFFER_SIZE;
-var bloop = []f32 { 0 } ** AUDIO_BUFFER_SIZE;
+var beep = []f32{0} ** AUDIO_BUFFER_SIZE;
+var boop = []f32{0} ** AUDIO_BUFFER_SIZE;
+var bloop = []f32{0} ** AUDIO_BUFFER_SIZE;
 
 pub const KEY_BACKSPACE = 8;
 pub const KEY_TAB = 9;
@@ -186,5 +186,5 @@ pub const KEY_SLASH = 191;
 pub const KEY_BACKQUOTE = 192;
 pub const KEY_BRACKET_LEFT = 219;
 pub const KEY_BACKSLASH = 220;
-pub const KEY_BRAKET_RIGHT = 221;
+pub const KEY_BRAKECT_RIGHT = 221;
 pub const KEY_QUOTE = 22;

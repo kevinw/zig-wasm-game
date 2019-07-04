@@ -3,9 +3,6 @@ const assert = std.debug.assert;
 const os = std.os;
 const builtin = @import("builtin");
 
-//pub const allocator = std.heap.c_allocator;
-//pub const panic = std.debug.panic;
-
 // until std has better wasm panic
 pub fn panic(msg: []const u8, error_return_trace: ?*builtin.StackTrace) noreturn {
     while (true) {
@@ -25,7 +22,7 @@ const RawImage = @import("png.zig").RawImage;
 const font_raw = embedImage("../assets/fontx.bin", 576, 128, 32);
 
 export fn onKeyDown(keyCode: c_int, state: u8) void {
-    if (state == 0) return;
+    //if (state == 0) return;
     const t = &game.tetris_state;
     switch (keyCode) {
         c.KEY_ESCAPE, c.KEY_P => game.userTogglePause(t),
@@ -40,9 +37,15 @@ export fn onKeyDown(keyCode: c_int, state: u8) void {
         c.KEY_L => game.logMessage(t),
         else => {},
     }
+
+    t.keys[@intCast(usize, keyCode)] = true;
 }
 
-export fn onKeyUp(button: c_int, x: c_int, y: c_int) void {}
+export fn onKeyUp(keyCode: c_int, state: u8) void {
+    //if (state != 0) return;
+    const t = &game.tetris_state;
+    t.keys[@intCast(usize, keyCode)] = false;
+}
 
 export fn onMouseDown(button: c_int, x: c_int, y: c_int) void {}
 
@@ -50,21 +53,48 @@ export fn onMouseUp(button: c_int, x: c_int, y: c_int) void {}
 
 export fn onMouseMove(x: c_int, y: c_int) void {}
 
+fn reverseImageY(bytes: []u8, pitch: u32) []u8 {
+    const new_bytes = c.allocator.alloc(u8, bytes.len) catch unreachable;
+    const num_rows = bytes.len / pitch;
+
+    var i: u32 = 0;
+    while (i < num_rows) : (i += 1) {
+        const row_start = i * pitch;
+        const new_row_start = (num_rows - i - 1) * pitch;
+
+        const dest = new_bytes[new_row_start .. new_row_start + pitch];
+        const src = bytes[row_start .. row_start + pitch];
+
+        std.mem.copy(u8, dest, src);
+    }
+
+    //pub fn copy(comptime T: type, dest: []T, source: []const T) void {
+    return new_bytes;
+}
+
 export fn onFetch(width: c_uint, height: c_uint, bytes_ptr: c_uint, bytes_len: c_uint) void {
     //c.log("FROM WASM ON FETCH {} {}", bytes_ptr, bytes_len);
     if (bytes_len > 0 and bytes_ptr > 0) {
         var rawSlice = @intToPtr([*]u8, bytes_ptr);
         var slice = rawSlice[0..bytes_len];
+        const pitch = bytes_len / height;
+
+        var flippedSlice = reverseImageY(slice, pitch);
+        c.allocator.free(slice);
+
         //c.log("got slice: '{}'", slice.len);
         const raw_image = RawImage{
             .width = width,
             .height = height,
-            .pitch = bytes_len / height,
-            .raw = slice,
+            .pitch = pitch,
+            .raw = flippedSlice,
         };
+
         game.tetris_state.player.init(raw_image, 48, 48) catch |err| {
             c.log("error initializing player sprite {}", err);
         };
+
+        c.allocator.free(flippedSlice);
     }
 }
 

@@ -16,13 +16,9 @@ const Spritesheet = @import("spritesheet.zig").Spritesheet;
 const embedImage = @import("png.zig").embedImage;
 const RawImage = @import("png.zig").RawImage;
 const DebugConsole = @import("debug_console.zig").DebugConsole;
-const SceneNode = @import("scenegraph.zig").SceneNode;
-
-const gbe = @import("../oxid/gbe.zig");
 
 pub const Tetris = struct {
     window: *c.Window,
-    keys: [255]bool,
     debug_console: DebugConsole,
     all_shaders: AllShaders,
     static_geometry: StaticGeometry,
@@ -45,7 +41,6 @@ pub const Tetris = struct {
     next_falling_block_index: usize,
     font: Spritesheet,
     player: Spritesheet,
-    player_pos: Vec3,
     ghost_y: i32,
     framebuffer_width: c_int,
     framebuffer_height: c_int,
@@ -210,22 +205,25 @@ pub fn draw(t: *Tetris) void {
     } else if (t.is_paused) {
         drawCenteredText(t, "PAUSED", 1.0, WHITE);
     } else {
-        drawCenteredText(t, "play", 4.0, vec4(1, 1, 1, 0.5));
+        drawCenteredText(t, "p l ay", 4.0, vec4(1, 1, 1, 0.5));
 
         {
             const left = 0;
-            const top = t.player_pos.data[1];
+            const top = 0;
             const size = 1;
             const i = 0;
             const sprite_width = 48;
-            const sprite_left = t.player_pos.data[0] + @intToFloat(f32, left) + @intToFloat(f32, i * sprite_width) * size;
-            const model = mat4x4_identity.translate(sprite_left, top, 0.0).scale(size, size, 0.0);
-            const view = mat4x4_identity.translate(0, 0, 0);
-            const mvp = t.projection.mult(view).mult(model);
+            const sprite_left = @intToFloat(f32, left) + @intToFloat(f32, i * sprite_width) * size;
+            const model = mat4x4_identity.translate(sprite_left, @intToFloat(f32, top), 0.0).scale(size, size, 0.0);
+            const mvp = t.projection.mult(model);
             const color = vec4(1, 1, 1, 1);
             t.player.draw(t.all_shaders, 0, mvp, color);
         }
+    }
+}
 
+pub fn draw2(t: *Tetris) void {
+    {
         const abs_x = board_left + t.cur_piece_x * cell_size;
         const abs_y = board_top + t.cur_piece_y * cell_size;
         drawPiece(t, t.cur_piece.*, abs_x, abs_y, t.cur_piece_rot);
@@ -352,13 +350,6 @@ pub fn nextFrame(t: *Tetris, elapsed: f64) void {
     c.glClear(c.GL_COLOR_BUFFER_BIT | c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT);
 
     if (t.is_paused) return;
-
-    const speed: f32 = @floatCast(f32, elapsed * 500.0);
-    const pos = &t.player_pos.data;
-    if (t.keys[c.KEY_RIGHT]) pos[0] += speed;
-    if (t.keys[c.KEY_LEFT]) pos[0] -= speed;
-    if (t.keys[c.KEY_DOWN]) pos[1] += speed;
-    if (t.keys[c.KEY_UP]) pos[1] -= speed;
 
     for (t.falling_blocks) |*maybe_p| {
         if (maybe_p.*) |*p| {
