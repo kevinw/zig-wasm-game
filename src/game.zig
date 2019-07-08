@@ -167,10 +167,9 @@ fn drawCenteredText(t: *Tetris, text: []const u8, scale: f32, color: Vec4) void 
     drawTextWithColor(t, text, draw_left, draw_top, scale, color);
 }
 
-fn sprite_matrix(proj: Mat4x4, sprite_width: i32, sprite_index: i32, pos: Vec3) Mat4x4 {
+fn sprite_matrix(proj: Mat4x4, sprite_width: i32, pos: Vec3) Mat4x4 {
     const size = 1;
-    const sprite_left = pos.data[0] + @intToFloat(f32, sprite_index * sprite_width) * size;
-    const model = mat4x4_identity.translate(sprite_left, pos.data[1], 0.0).scale(size, size, 0.0);
+    const model = mat4x4_identity.translate(pos.data[0], pos.data[1], 0.0).scale(size, size, 0.0);
     const view = mat4x4_identity.translate(0, 0, 0);
     const mvp = proj.mult(view).mult(model);
     return mvp;
@@ -190,12 +189,10 @@ pub fn draw(t: *Tetris) void {
 
         var it = t.session.iter(Sprite);
         while (it.next()) |object| {
-            if (object.is_active) {
-                const sprite = object.data;
-                if (sprite.spritesheet) |spritesheet| {
-                    const pos = sprite.pos;
-                    spritesheet.draw(t.all_shaders, 0, sprite_matrix(t.projection, 48, 0, pos), color);
-                }
+            if (!object.is_active) continue;
+            const sprite = object.data;
+            if (sprite.spritesheet) |spritesheet| {
+                spritesheet.draw(t.all_shaders, sprite.index, sprite_matrix(t.projection, 48, sprite.pos), color);
             }
         }
     }

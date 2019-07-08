@@ -10,7 +10,7 @@ pub const Player = struct {
         const entity_id = gs.spawn();
         errdefer gs.undoSpawn(entity_id);
         try gs.addComponent(entity_id, c.Player{});
-        try gs.addComponent(entity_id, c.Sprite.new());
+        try gs.addComponent(entity_id, c.Sprite{});
         return entity_id;
     }
 };
