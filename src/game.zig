@@ -167,6 +167,15 @@ fn drawCenteredText(t: *Tetris, text: []const u8, scale: f32, color: Vec4) void 
     drawTextWithColor(t, text, draw_left, draw_top, scale, color);
 }
 
+fn sprite_matrix(proj: Mat4x4, sprite_width: i32, sprite_index: i32, pos: Vec3) Mat4x4 {
+    const size = 1;
+    const sprite_left = pos.data[0] + @intToFloat(f32, sprite_index * sprite_width) * size;
+    const model = mat4x4_identity.translate(sprite_left, pos.data[1], 0.0).scale(size, size, 0.0);
+    const view = mat4x4_identity.translate(0, 0, 0);
+    const mvp = proj.mult(view).mult(model);
+    return mvp;
+}
+
 pub fn draw(t: *Tetris) void {
     if (t.is_loading) {
         drawCenteredText(t, "LOADING", 2.0, WHITE);
@@ -177,22 +186,16 @@ pub fn draw(t: *Tetris) void {
     } else {
         drawCenteredText(t, "play", 4.0, vec4(1, 1, 1, 0.5));
 
-        {
-            const player_maybe = t.session.findFirst(Player);
-            if (player_maybe) |player| {
-                const pos = &player.pos.data;
+        const color = vec4(1, 1, 1, 1);
 
-                const left = 0;
-                const top = pos[1];
-                const size = 1;
-                const i = 0;
-                const sprite_width = 48;
-                const sprite_left = pos[0] + @intToFloat(f32, left) + @intToFloat(f32, i * sprite_width) * size;
-                const model = mat4x4_identity.translate(sprite_left, top, 0.0).scale(size, size, 0.0);
-                const view = mat4x4_identity.translate(0, 0, 0);
-                const mvp = t.projection.mult(view).mult(model);
-                const color = vec4(1, 1, 1, 1);
-                t.player.draw(t.all_shaders, 0, mvp, color);
+        var it = t.session.iter(Sprite);
+        while (it.next()) |object| {
+            if (object.is_active) {
+                const sprite = object.data;
+                if (sprite.spritesheet) |spritesheet| {
+                    const pos = sprite.pos;
+                    spritesheet.draw(t.all_shaders, 0, sprite_matrix(t.projection, 48, 0, pos), color);
+                }
             }
         }
     }
@@ -265,7 +268,10 @@ pub fn restartGame(t: *Tetris) void {
     t.game_over = false;
     t.is_paused = false;
     t.debug_console.reset();
-    const player_entity_id = prefabs.Player.spawn(&t.session, prefabs.Player.Params{});
+    const player_entity_id = prefabs.Player.spawn(&t.session, prefabs.Player.Params{}) catch unreachable;
+    if (t.session.findFirst(Sprite)) |spr| {
+        spr.spritesheet = &t.player;
+    }
 }
 
 pub fn resetProjection(t: *Tetris) void {

@@ -11,7 +11,6 @@ pub const EventInput = struct {
 };
 
 pub const Player = struct {
-    pos: Vec3,
     speed: f32 = 500,
 };
 

@@ -9,7 +9,7 @@ pub const Player = struct {
     pub fn spawn(gs: *GameSession, params: Params) !gbe.EntityId {
         const entity_id = gs.spawn();
         errdefer gs.undoSpawn(entity_id);
-        try gs.addComponent(entity_id, c.Player{ .pos = vec3(0, 0, 0) });
+        try gs.addComponent(entity_id, c.Player{});
         try gs.addComponent(entity_id, c.Sprite.new());
         return entity_id;
     }

@@ -5,13 +5,14 @@ usingnamespace @import("../globals.zig");
 const SystemData = struct {
     id: EntityId,
     player: *Player,
+    sprite: *Sprite,
 };
 
 pub const run = GameSession.buildSystem(SystemData, think);
 
 fn think(gs: *GameSession, self: SystemData) bool {
     const speed: f32 = @floatCast(f32, Time.delta_time * self.player.speed);
-    const pos = &self.player.pos.data;
+    const pos = &self.sprite.pos.data;
 
     const c = @import("../platform.zig");
     const keys = &Input.keys;
