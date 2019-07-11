@@ -1,39 +1,43 @@
+const std = @import("std");
 const Builder = @import("std").build.Builder;
+const warn = @import("std").debug.warn;
 const builtin = @import("builtin");
 
-//pub fn build(b: *Builder) void {
-//    const mode = b.standardReleaseOptions();
-//
-//    var wasmLib = b.addStaticLibrary("main_web", "src/main_web.zig");
-//    //wasmLib.setTarget(builtin.Arch.x86_64, builtin.Os.windows, builtin.Abi.gnu);
-//    wasmLib.setTarget(builtin.Arch.wasm32, builtin.Os.freestanding, builtin.Abi.gnu);
-//    wasmLib.setBuildMode(mode);
-//
-//    b.default_step.dependOn(&wasmLib.step);
-//    b.installArtifact(wasmLib);
-//}
+const WIN_SDK_PATH = "C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.16299.0\\";
+const VCPKG_PATH = "../vcpkg/installed/x86-windows/";
 
 pub fn build(b: *Builder) void {
-    const mode = b.standardReleaseOptions();
-    const windows = b.option(bool, "windows", "create windows build") orelse false;
+    var exe = b.addExecutable("game", "src/main.zig");
+    exe.setBuildMode(b.standardReleaseOptions());
+    exe.addIncludeDir(".");
 
-    var exe = b.addExecutable("tetris", "src/main.zig");
-    exe.setBuildMode(mode);
+    // for windows headers
+    exe.addIncludeDir(WIN_SDK_PATH ++ "shared");
+    exe.addIncludeDir(WIN_SDK_PATH ++ "um");
 
-    if (windows) {
-        exe.setTarget(builtin.Arch.x86_64, builtin.Os.windows, builtin.Abi.gnu);
-    }
+    exe.addPackagePath("gbe", "gbe/src/gbe.zig");
+
+    // for libraries installed by vcpkg
+    exe.addIncludeDir(VCPKG_PATH ++ "include");
+    exe.addLibPath(VCPKG_PATH ++ "lib");
+
+    exe.setVerboseLink(true);
 
     exe.linkSystemLibrary("c");
-    exe.linkSystemLibrary("m");
-    exe.linkSystemLibrary("glfw");
-    exe.linkSystemLibrary("epoxy");
-    exe.linkSystemLibrary("png");
-    exe.linkSystemLibrary("z");
+    exe.linkSystemLibrary("glfw3dll.lib");
+
+    // exe.addIncludeDir("../z/Chipmunk2D/include");
+    // exe.addLibPath("../z/Chipmunk2D/zig-cache/lib");
+    // exe.linkSystemLibrary("chipmunk.lib");
+
+    var args = std.ArrayList([]const u8).init(b.allocator);
+    args.append("python") catch unreachable;
+    args.append("component_codegen.py") catch unreachable;
+
+    const codegen_step = b.addSystemCommand(args.toSliceConst());
+    exe.step.dependOn(&codegen_step.step);
 
     b.default_step.dependOn(&exe.step);
-
-    b.installArtifact(exe);
 
     const play = b.step("play", "Play the game");
     const run = exe.run();

@@ -64,7 +64,7 @@ pub const DebugConsole = struct {
         self.entries = new_entries;
     }
 
-    pub fn draw(self: *Self, t: *const game.Tetris) void {
+    pub fn draw(self: *Self, t: *const game.Game) void {
         if (self.entries.len == 0) return;
 
         var x: i32 = 10;

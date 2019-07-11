@@ -4,7 +4,6 @@ const std = @import("std");
 const os = std.os;
 const c = @import("platform.zig");
 const panic = c.panic;
-//const assert = std.debug.assert;
 const bufPrint = std.fmt.bufPrint;
 const debug_gl = @import("debug_gl.zig");
 const AllShaders = @import("all_shaders.zig").AllShaders;
@@ -17,7 +16,6 @@ const embedImage = @import("png.zig").embedImage;
 const RawImage = @import("png.zig").RawImage;
 const DebugConsole = @import("debug_console.zig").DebugConsole;
 
-//const gbe = @import("../oxid/gbe.zig");
 const gbe = @import("gbe");
 const prefabs = @import("prefabs.zig");
 
@@ -27,14 +25,9 @@ const GameSession = @import("session.zig").GameSession;
 
 const WHITE = vec4(1, 1, 1, 1);
 
-fn updateSession(gs: *GameSession) void {
-    @import("systems/player.zig").run(gs);
-    @import("components/sprite.zig").run(gs);
-}
+pub var game_state: Game = undefined;
 
-pub var tetris_state: Tetris = undefined;
-
-pub const Tetris = struct {
+pub const Game = struct {
     window: *c.Window,
     session: GameSession,
     debug_console: DebugConsole,
@@ -119,7 +112,7 @@ var beep = blk: {
     break :blk b;
 };
 
-fn fillRectMvp(t: *Tetris, color: Vec4, mvp: Mat4x4) void {
+fn fillRectMvp(t: *Game, color: Vec4, mvp: Mat4x4) void {
     t.all_shaders.primitive.bind();
     t.all_shaders.primitive.setUniformVec4(t.all_shaders.primitive_uniform_color, color);
     t.all_shaders.primitive.setUniformMat4x4(t.all_shaders.primitive_uniform_mvp, mvp);
@@ -131,13 +124,13 @@ fn fillRectMvp(t: *Tetris, color: Vec4, mvp: Mat4x4) void {
     c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 }
 
-fn fillRect(t: *Tetris, color: Vec4, x: f32, y: f32, w: f32, h: f32) void {
+fn fillRect(t: *Game, color: Vec4, x: f32, y: f32, w: f32, h: f32) void {
     const model = mat4x4_identity.translate(x, y, 0.0).scale(w, h, 0.0);
     const mvp = t.projection.mult(model);
     fillRectMvp(t, color, mvp);
 }
 
-fn drawParticle(t: *Tetris, p: Particle) void {
+fn drawParticle(t: *Game, p: Particle) void {
     const model = mat4x4_identity.translateByVec(p.pos).rotate(p.angle, p.axis).scale(p.scale_w, p.scale_h, 0.0);
 
     const mvp = t.projection.mult(model);
@@ -153,13 +146,13 @@ fn drawParticle(t: *Tetris, p: Particle) void {
     c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 3);
 }
 
-fn drawFallingBlock(t: *Tetris, p: Particle) void {
+fn drawFallingBlock(t: *Game, p: Particle) void {
     const model = mat4x4_identity.translateByVec(p.pos).rotate(p.angle, p.axis).scale(p.scale_w, p.scale_h, 0.0);
     const mvp = t.projection.mult(model);
     fillRectMvp(t, p.color, mvp);
 }
 
-fn drawCenteredText(t: *Tetris, text: []const u8, scale: f32, color: Vec4) void {
+fn drawCenteredText(t: *Game, text: []const u8, scale: f32, color: Vec4) void {
     const len = @intToFloat(f32, text.len) * scale;
     const label_width = font_char_width * @floatToInt(i32, len);
     const draw_left = board_left + board_width / 2 - @divExact(label_width, 2);
@@ -175,7 +168,7 @@ fn sprite_matrix(proj: Mat4x4, sprite_width: i32, pos: Vec3) Mat4x4 {
     return mvp;
 }
 
-pub fn draw(t: *Tetris) void {
+pub fn draw(t: *Game) void {
     if (t.is_loading) {
         drawCenteredText(t, "LOADING", 2.0, WHITE);
     } else if (t.game_over) {
@@ -183,8 +176,7 @@ pub fn draw(t: *Tetris) void {
     } else if (t.is_paused) {
         drawCenteredText(t, "PAUSED", 1.0, WHITE);
     } else {
-        drawCenteredText(t, "play", 4.0, vec4(1, 1, 1, 0.5));
-
+        //drawCenteredText(t, "play", 4.0, vec4(1, 1, 1, 0.5));
         const color = vec4(1, 1, 1, 1);
 
         var it = t.session.iter(Sprite);
@@ -193,6 +185,8 @@ pub fn draw(t: *Tetris) void {
             const sprite = object.data;
             if (sprite.spritesheet) |spritesheet| {
                 spritesheet.draw(t.all_shaders, sprite.index, sprite_matrix(t.projection, 48, sprite.pos), color);
+            } else {
+                fillRect(t, vec4(1, 0, 1, 1), sprite.pos.data[0], sprite.pos.data[1], 8, 8);
             }
         }
     }
@@ -202,11 +196,11 @@ pub fn draw(t: *Tetris) void {
     debug_gl.assertNoError();
 }
 
-pub fn drawText(t: *const Tetris, text: []const u8, left: i32, top: i32, size: f32) void {
+pub fn drawText(t: *const Game, text: []const u8, left: i32, top: i32, size: f32) void {
     drawTextWithColor(t, text, left, top, size, WHITE);
 }
 
-pub fn drawTextWithColor(t: *const Tetris, text: []const u8, left: i32, top: i32, size: f32, color: Vec4) void {
+pub fn drawTextWithColor(t: *const Game, text: []const u8, left: i32, top: i32, size: f32, color: Vec4) void {
     for (text) |col, i| {
         if (col <= '~') {
             const char_left = @intToFloat(f32, left) + @intToFloat(f32, i * font_char_width) * size;
@@ -219,11 +213,11 @@ pub fn drawTextWithColor(t: *const Tetris, text: []const u8, left: i32, top: i32
     }
 }
 
-fn drawPiece(t: *Tetris, piece: Piece, left: i32, top: i32, rot: usize) void {
+fn drawPiece(t: *Game, piece: Piece, left: i32, top: i32, rot: usize) void {
     drawPieceWithColor(t, piece, left, top, rot, piece.color);
 }
 
-fn drawPieceWithColor(t: *Tetris, piece: Piece, left: i32, top: i32, rot: usize, color: Vec4) void {
+fn drawPieceWithColor(t: *Game, piece: Piece, left: i32, top: i32, rot: usize, color: Vec4) void {
     for (piece.layout[rot]) |row, y| {
         for (row) |is_filled, x| {
             if (!is_filled) continue;
@@ -235,7 +229,7 @@ fn drawPieceWithColor(t: *Tetris, piece: Piece, left: i32, top: i32, rot: usize,
     }
 }
 
-pub fn nextFrame(t: *Tetris, elapsed: f64) void {
+pub fn nextFrame(t: *Game, elapsed: f64) void {
     c.glClear(c.GL_COLOR_BUFFER_BIT | c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT);
 
     if (t.is_paused) return;
@@ -243,16 +237,16 @@ pub fn nextFrame(t: *Tetris, elapsed: f64) void {
     Time.delta_time = @floatCast(f32, elapsed);
     Time.time += Time.delta_time;
 
-    updateSession(&t.session);
-
+    @import("components_auto.zig").run_ALL(&t.session);
     t.debug_console.update(elapsed);
+    t.session.applyRemovals();
 }
 
-pub fn logMessage(t: *Tetris) void {
+pub fn logMessage(t: *Game) void {
     t.debug_console.log("hello, world!");
 }
 
-pub fn userTogglePause(t: *Tetris) void {
+pub fn userTogglePause(t: *Game) void {
     if (t.game_over) return;
     t.is_paused = !t.is_paused;
 }
@@ -261,17 +255,20 @@ pub fn didImageLoad() void {
     tetris_state.is_loading = false;
 }
 
-pub fn restartGame(t: *Tetris) void {
+pub fn restartGame(t: *Game) void {
     t.game_over = false;
     t.is_paused = false;
     t.debug_console.reset();
+
+    t.session.init(42);
+
     const player_entity_id = prefabs.Player.spawn(&t.session, prefabs.Player.Params{}) catch unreachable;
     if (t.session.findFirst(Sprite)) |spr| {
         spr.spritesheet = &t.player;
     }
 }
 
-pub fn resetProjection(t: *Tetris) void {
+pub fn resetProjection(t: *Game) void {
     t.projection = mat4x4Ortho(
         0.0,
         @intToFloat(f32, t.framebuffer_width),

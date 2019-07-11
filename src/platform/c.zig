@@ -11,7 +11,7 @@ pub usingnamespace @cImport({
 pub const std = @import("std");
 pub const allocator = std.heap.c_allocator;
 pub const panic = std.debug.panic;
-pub const Window = GLFWwindow;
+pub const Window = @typeOf(glfwCreateWindow(game.window_width, game.window_height, c"WasmGame", null, null));
 
 pub fn initShader(source: []const u8, name: []const u8, kind: GLenum) GLuint {
     const shader_id = glCreateShader(kind);

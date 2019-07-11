@@ -6,7 +6,7 @@ pub const panic = std.debug.panic;
 
 const c = @import("platform.zig");
 const game = @import("game.zig");
-const Tetris = game.Tetris;
+const Game = game.Game;
 const debug_gl = @import("debug_gl.zig");
 const AllShaders = @import("all_shaders.zig").AllShaders;
 const StaticGeometry = @import("static_geometry.zig").StaticGeometry;
@@ -20,19 +20,19 @@ extern fn errorCallback(err: c_int, description: [*c]const u8) void {
 
 extern fn keyCallback(window: ?*c.GLFWwindow, key: c_int, scancode: c_int, action: c_int, mods: c_int) void {
     if (action != c.GLFW_PRESS) return;
-    const t = @ptrCast(*Tetris, @alignCast(@alignOf(Tetris), c.glfwGetWindowUserPointer(window).?));
+    const t = @ptrCast(*Game, @alignCast(@alignOf(Game), c.glfwGetWindowUserPointer(window).?));
 
     switch (key) {
         c.GLFW_KEY_ESCAPE => c.glfwSetWindowShouldClose(window, c.GL_TRUE),
-        c.GLFW_KEY_SPACE => game.userDropCurPiece(t),
-        c.GLFW_KEY_DOWN => game.userCurPieceFall(t),
-        c.GLFW_KEY_LEFT => game.userMoveCurPiece(t, -1),
-        c.GLFW_KEY_RIGHT => game.userMoveCurPiece(t, 1),
-        c.GLFW_KEY_UP => game.userRotateCurPiece(t, 1),
-        c.GLFW_KEY_LEFT_SHIFT, c.GLFW_KEY_RIGHT_SHIFT => game.userRotateCurPiece(t, -1),
+        //c.GLFW_KEY_SPACE => game.userDropCurPiece(t),
+        //c.GLFW_KEY_DOWN => game.userCurPieceFall(t),
+        //c.GLFW_KEY_LEFT => game.userMoveCurPiece(t, -1),
+        //c.GLFW_KEY_RIGHT => game.userMoveCurPiece(t, 1),
+        //c.GLFW_KEY_UP => game.userRotateCurPiece(t, 1),
+        //c.GLFW_KEY_LEFT_SHIFT, c.GLFW_KEY_RIGHT_SHIFT => game.userRotateCurPiece(t, -1),
         c.GLFW_KEY_R => game.restartGame(t),
         c.GLFW_KEY_P => game.userTogglePause(t),
-        c.GLFW_KEY_LEFT_CONTROL, c.GLFW_KEY_RIGHT_CONTROL => game.userSetHoldPiece(t),
+        //c.GLFW_KEY_LEFT_CONTROL, c.GLFW_KEY_RIGHT_CONTROL => game.userSetHoldPiece(t),
         else => {},
     }
 }
@@ -54,7 +54,7 @@ pub fn main() !void {
     c.glfwWindowHint(c.GLFW_STENCIL_BITS, 8);
     c.glfwWindowHint(c.GLFW_RESIZABLE, c.GL_FALSE);
 
-    var window = c.glfwCreateWindow(game.window_width, game.window_height, c"Tetris", null, null) orelse {
+    var window = c.glfwCreateWindow(game.window_width, game.window_height, c"Game", null, null) orelse {
         panic("unable to create window\n");
     };
     defer c.glfwDestroyWindow(window);
