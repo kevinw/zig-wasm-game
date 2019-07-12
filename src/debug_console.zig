@@ -74,7 +74,7 @@ pub const DebugConsole = struct {
         for (self.entries.toSliceConst()) |*entry| {
             const elapsed = self.now - entry.time;
             const alpha = alphaForTime(@floatCast(f32, elapsed));
-            color.data[3] = alpha;
+            color.w = alpha;
             game.drawTextWithColor(t, entry.message, x, y, font_size, color);
             y += game.font_char_height;
         }
