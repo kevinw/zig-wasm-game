@@ -132,7 +132,7 @@ pub const ShaderProgram = struct {
 
     pub fn setUniformVec3(sp: ShaderProgram, uniform_id: c.GLint, value: math3d.Vec3) void {
         if (c.is_web) {
-            c.glUniform3fv(uniform_id, value.data[0], value.data[1], value.data[2]);
+            c.glUniform3fv(uniform_id, value.x, value.y, value.z);
         } else {
             c.glUniform3fv(uniform_id, 1, value.data[0..].ptr);
         }
@@ -140,7 +140,7 @@ pub const ShaderProgram = struct {
 
     pub fn setUniformVec4(sp: ShaderProgram, uniform_id: c.GLint, value: Vec4) void {
         if (c.is_web) {
-            c.glUniform4fv(uniform_id, value.data[0], value.data[1], value.data[2], value.data[3]);
+            c.glUniform4fv(uniform_id, value.x, value.y, value.z, value.w);
         } else {
             c.glUniform4fv(uniform_id, 1, value.data[0..].ptr);
         }

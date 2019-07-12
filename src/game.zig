@@ -162,7 +162,7 @@ fn drawCenteredText(t: *Game, text: []const u8, scale: f32, color: Vec4) void {
 
 fn sprite_matrix(proj: Mat4x4, sprite_width: i32, pos: Vec3) Mat4x4 {
     const size = 1;
-    const model = mat4x4_identity.translate(pos.data[0], pos.data[1], 0.0).scale(size, size, 0.0);
+    const model = mat4x4_identity.translate(pos.x, pos.y, 0.0).scale(size, size, 0.0);
     const view = mat4x4_identity.translate(0, 0, 0);
     const mvp = proj.mult(view).mult(model);
     return mvp;
@@ -186,7 +186,7 @@ pub fn draw(t: *Game) void {
             if (sprite.spritesheet) |spritesheet| {
                 spritesheet.draw(t.all_shaders, sprite.index, sprite_matrix(t.projection, 48, sprite.pos), color);
             } else {
-                fillRect(t, vec4(1, 0, 1, 1), sprite.pos.data[0], sprite.pos.data[1], 8, 8);
+                fillRect(t, vec4(1, 0, 1, 1), sprite.pos.x, sprite.pos.y, 8, 8);
             }
         }
     }

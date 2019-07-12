@@ -48,9 +48,9 @@ pub const Mat4x4 = struct {
 
         const rot = Mat4x4{
             .data = [_][4]f32{
-                [_]f32{ cos + temp.data[0] * axis.data[0], 0.0 + temp.data[1] * axis.data[0] - s * axis.data[2], 0.0 + temp.data[2] * axis.data[0] + s * axis.data[1], 0.0 },
-                [_]f32{ 0.0 + temp.data[0] * axis.data[1] + s * axis.data[2], cos + temp.data[1] * axis.data[1], 0.0 + temp.data[2] * axis.data[1] - s * axis.data[0], 0.0 },
-                [_]f32{ 0.0 + temp.data[0] * axis.data[2] - s * axis.data[1], 0.0 + temp.data[1] * axis.data[2] + s * axis.data[0], cos + temp.data[2] * axis.data[2], 0.0 },
+                [_]f32{ cos + temp.x * axis.x, 0.0 + temp.y * axis.x - s * axis.z, 0.0 + temp.z * axis.x + s * axis.y, 0.0 },
+                [_]f32{ 0.0 + temp.x * axis.y + s * axis.z, cos + temp.y * axis.y, 0.0 + temp.z * axis.y - s * axis.x, 0.0 },
+                [_]f32{ 0.0 + temp.x * axis.x - s * axis.y, 0.0 + temp.y * axis.z + s * axis.x, cos + temp.z * axis.z, 0.0 },
                 [_]f32{ 0.0, 0.0, 0.0, 0.0 },
             },
         };
@@ -148,7 +148,9 @@ pub fn mat4x4Ortho(left: f32, right: f32, bottom: f32, top: f32) Mat4x4 {
 }
 
 pub const Vec3 = struct {
-    data: [3]f32,
+    x: f32,
+    y: f32,
+    z: f32,
 
     pub fn normalize(v: Vec3) Vec3 {
         return v.scale(1.0 / std.math.sqrt(v.dot(v)));
@@ -156,18 +158,16 @@ pub const Vec3 = struct {
 
     pub fn scale(v: Vec3, scalar: f32) Vec3 {
         return Vec3{
-            .data = [_]f32{
-                v.data[0] * scalar,
-                v.data[1] * scalar,
-                v.data[2] * scalar,
-            },
+            .x = v.x * scalar,
+            .y = v.y * scalar,
+            .z = v.z * scalar,
         };
     }
 
     pub fn dot(v: Vec3, other: Vec3) f32 {
-        return v.data[0] * other.data[0] +
-            v.data[1] * other.data[1] +
-            v.data[2] * other.data[2];
+        return v.x * other.x +
+            v.y * other.y +
+            v.z * other.z;
     }
 
     pub fn length(v: Vec3) f32 {
@@ -177,53 +177,54 @@ pub const Vec3 = struct {
     /// returns the cross product
     pub fn cross(v: Vec3, other: Vec3) Vec3 {
         return Vec3{
-            .data = [_]f32{
-                v.data[1] * other.data[2] - other.data[1] * v.data[2],
-                v.data[2] * other.data[0] - other.data[2] * v.data[0],
-                v.data[0] * other.data[1] - other.data[0] * v.data[1],
-            },
+            v.data.y * other.data.z - other.data.y * v.data.z,
+            v.data.z * other.data.x - other.data.z * v.data.x,
+            v.data.x * other.data.y - other.data.x * v.data.y,
         };
     }
 
     pub fn add(v: Vec3, other: Vec3) Vec3 {
         return Vec3{
-            .data = [_]f32{
-                v.data[0] + other.data[0],
-                v.data[1] + other.data[1],
-                v.data[2] + other.data[2],
-            },
+            .x = v.x + other.x,
+            .y = v.y + other.y,
+            .z = v.z + other.z,
+        };
+    }
+
+    pub fn multScalar(v: Vec3, scalar: f32) Vec3 {
+        return Vec3{
+            .x = v.x * scalar,
+            .y = v.y * scalar,
+            .z = v.z * scalar,
         };
     }
 };
 
 pub fn vec3(x: f32, y: f32, z: f32) Vec3 {
     return Vec3{
-        .data = [_]f32{
-            x,
-            y,
-            z,
-        },
+        .x = x,
+        .y = y,
+        .z = z,
     };
 }
 
 pub const Vec4 = struct {
-    data: [4]f32,
+    x: f32,
+    y: f32,
+    z: f32,
+    w: f32,
 };
 
 pub fn vec4(xa: f32, xb: f32, xc: f32, xd: f32) Vec4 {
     return Vec4{
-        .data = [_]f32{
-            xa,
-            xb,
-            xc,
-            xd,
-        },
+        .x = xa,
+        .y = xb,
+        .z = xc,
+        .w = xd,
     };
 }
 
-fn testScale() void {
-    @setFnTest(this, true);
-
+test "scale" {
     const m = Mat4x4{
         .data = [_][4]f32{
             [_]f32{ 0.840188, 0.911647, 0.277775, 0.364784 },
@@ -241,12 +242,10 @@ fn testScale() void {
         },
     };
     const answer = m.scale(0.141603, 0.717297, 0.635712);
-    assert_matrix_eq(answer, expected);
+    assertMatrixEq(answer, expected);
 }
 
-fn testTranslate() void {
-    @setFnTest(this, true);
-
+test "translate" {
     const m = Mat4x4{
         .data = [_][4]f32{
             [_]f32{ 0.840188, 0.911647, 0.277775, 0.364784 },
@@ -264,13 +263,11 @@ fn testTranslate() void {
         },
     };
     const answer = m.translate(0.141603, 0.717297, 0.635712);
-    assert_matrix_eq(answer, expected);
+    assertMatrixEq(answer, expected);
 }
 
-fn testOrtho() void {
-    @setFnTest(this, true);
-
-    const m = mat4x4_ortho(0.840188, 0.394383, 0.783099, 0.79844);
+test "ortho" {
+    const m = mat4x4Ortho(0.840188, 0.394383, 0.783099, 0.79844);
 
     const expected = Mat4x4{
         .data = [_][4]f32{
@@ -281,39 +278,37 @@ fn testOrtho() void {
         },
     };
 
-    assert_matrix_eq(m, expected);
+    assertMatrixEq(m, expected);
 }
 
 fn assertFEq(left: f32, right: f32) void {
-    const diff = std.math.abs(left - right);
+    const diff = std.math.absFloat(left - right);
     assert(diff < 0.01);
 }
 
 fn assertMatrixEq(left: Mat4x4, right: Mat4x4) void {
-    assert_f_eq(left.data[0][0], right.data[0][0]);
-    assert_f_eq(left.data[0][1], right.data[0][1]);
-    assert_f_eq(left.data[0][2], right.data[0][2]);
-    assert_f_eq(left.data[0][3], right.data[0][3]);
+    assertFEq(left.data[0][0], right.data[0][0]);
+    assertFEq(left.data[0][1], right.data[0][1]);
+    assertFEq(left.data[0][2], right.data[0][2]);
+    assertFEq(left.data[0][3], right.data[0][3]);
 
-    assert_f_eq(left.data[1][0], right.data[1][0]);
-    assert_f_eq(left.data[1][1], right.data[1][1]);
-    assert_f_eq(left.data[1][2], right.data[1][2]);
-    assert_f_eq(left.data[1][3], right.data[1][3]);
+    assertFEq(left.data[1][0], right.data[1][0]);
+    assertFEq(left.data[1][1], right.data[1][1]);
+    assertFEq(left.data[1][2], right.data[1][2]);
+    assertFEq(left.data[1][3], right.data[1][3]);
 
-    assert_f_eq(left.data[2][0], right.data[2][0]);
-    assert_f_eq(left.data[2][1], right.data[2][1]);
-    assert_f_eq(left.data[2][2], right.data[2][2]);
-    assert_f_eq(left.data[2][3], right.data[2][3]);
+    assertFEq(left.data[2][0], right.data[2][0]);
+    assertFEq(left.data[2][1], right.data[2][1]);
+    assertFEq(left.data[2][2], right.data[2][2]);
+    assertFEq(left.data[2][3], right.data[2][3]);
 
-    assert_f_eq(left.data[3][0], right.data[3][0]);
-    assert_f_eq(left.data[3][1], right.data[3][1]);
-    assert_f_eq(left.data[3][2], right.data[3][2]);
-    assert_f_eq(left.data[3][3], right.data[3][3]);
+    assertFEq(left.data[3][0], right.data[3][0]);
+    assertFEq(left.data[3][1], right.data[3][1]);
+    assertFEq(left.data[3][2], right.data[3][2]);
+    assertFEq(left.data[3][3], right.data[3][3]);
 }
 
-fn testMult() void {
-    @setFnTest(this, true);
-
+test "multiplication" {
     const m1 = Mat4x4{
         .data = [_][4]f32{
             [_]f32{ 0.635712, 0.717297, 0.141603, 0.606969 },
@@ -339,12 +334,10 @@ fn testMult() void {
         },
     };
     const tmp = m1.mult(m2);
-    assert_matrix_eq(tmp, answer);
+    assertMatrixEq(tmp, answer);
 }
 
-fn testRotate() void {
-    @setFnTest(this, true);
-
+test "rotate" {
     const m1 = Mat4x4{
         .data = [_][4]f32{
             [_]f32{ 0.840188, 0.911647, 0.277775, 0.364784 },
@@ -367,5 +360,5 @@ fn testRotate() void {
     };
 
     const actual = m1.rotate(angle, axis);
-    assert_matrix_eq(actual, expected);
+    assertMatrixEq(actual, expected);
 }

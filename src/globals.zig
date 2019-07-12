@@ -1,4 +1,5 @@
 const c = @import("platform.zig");
+pub usingnamespace @import("math3d.zig");
 
 pub const Time = struct {
     pub var time: f32 = 0;
