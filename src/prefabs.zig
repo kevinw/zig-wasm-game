@@ -11,7 +11,7 @@ pub const Player = struct {
         errdefer gs.undoSpawn(entity_id);
         try gs.addComponent(entity_id, c.Player{});
         try gs.addComponent(entity_id, c.Sprite{});
-        try gs.addComponent(entity_id, c.Gun{});
+        try gs.addComponent(entity_id, c.Gun{ .offset = vec3(24, 24, 0) });
         return entity_id;
     }
 };
