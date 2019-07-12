@@ -1,10 +1,12 @@
 usingnamespace @import("math3d.zig");
-const CappedArrayList = @import("capped_array_list.zig").CappedArrayList;
 const Spritesheet = @import("spritesheet.zig").Spritesheet;
 const game = @import("game.zig");
 const game_math = @import("game_math.zig");
 const c = @import("platform.zig");
-const assert = @import("std").debug.assert;
+
+const std = @import("std");
+const assert = std.debug.assert;
+const ArrayList = std.ArrayList;
 
 const MAX_ENTRIES = 10;
 
@@ -18,12 +20,15 @@ pub const DebugConsole = struct {
     const font_size: u32 = 1;
     const time_visible = 2.0;
 
-    entries: CappedArrayList(ConsoleEntry, MAX_ENTRIES),
+    allocator: *std.mem.Allocator,
+    entries: ArrayList(ConsoleEntry),
     now: f64,
 
-    pub fn init() DebugConsole {
+    pub fn init(allocator: *std.mem.Allocator) DebugConsole {
         var console: DebugConsole = undefined;
         console.reset();
+        console.allocator = allocator;
+        console.entries = ArrayList(ConsoleEntry).init(allocator);
         return console;
     }
 
@@ -35,7 +40,7 @@ pub const DebugConsole = struct {
     pub fn destroy(self: *Self) void {}
 
     pub fn log(self: *Self, message: []const u8) void {
-        while (self.entries.len == MAX_ENTRIES) {
+        while (self.entries.count() == MAX_ENTRIES) {
             _ = self.entries.orderedRemove(0);
         }
 
@@ -50,7 +55,7 @@ pub const DebugConsole = struct {
     pub fn update(self: *Self, dt: f64) void {
         self.now += dt;
 
-        var new_entries = CappedArrayList(ConsoleEntry, MAX_ENTRIES).init();
+        var new_entries = ArrayList(ConsoleEntry).init(self.allocator);
 
         for (self.entries.toSliceConst()) |*entry| {
             const elapsed = self.now - entry.time;

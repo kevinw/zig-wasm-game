@@ -13,10 +13,8 @@ def to_module_name(kls):
     return f"components/{kls.lower()}.zig"
 
 def gen_game_session(output, structs):
-    capacity = 100
-
     components = "\n".join(
-        f"    {name}: gbe.ComponentList({name}, {capacity}),"
+        f"    {name}: gbe.ComponentList({name}),"
         for name in structs)
 
     output.write(f"""// AUTO-GENERATED

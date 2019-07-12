@@ -260,9 +260,12 @@ pub fn restartGame(t: *Game) void {
     t.is_paused = false;
     t.debug_console.reset();
 
-    t.session.init(42);
+    t.session.init(42, c.allocator);
 
-    const player_entity_id = prefabs.Player.spawn(&t.session, prefabs.Player.Params{}) catch unreachable;
+    c.log("before spawn");
+
+    _ = prefabs.Player.spawn(&t.session, prefabs.Player.Params{}) catch unreachable;
+
     if (t.session.findFirst(Sprite)) |spr| {
         spr.spritesheet = &t.player;
     }
