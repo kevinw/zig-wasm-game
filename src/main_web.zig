@@ -11,7 +11,11 @@ pub fn panic(msg: []const u8, error_return_trace: ?*builtin.StackTrace) noreturn
     }
 }
 
-const c = @import("platform.zig");
+pub fn _log(comptime fmt: []const u8, args: ...) void {
+    c.log(fmt, args);
+}
+
+pub const c = @import("platform.zig");
 
 const game = @import("game.zig");
 const debug_gl = @import("debug_gl.zig");
@@ -118,6 +122,8 @@ export fn onInit() void {
     t.all_shaders = AllShaders.create();
     t.static_geometry = StaticGeometry.create();
     t.font.init(font_raw, game.font_char_width, game.font_char_height) catch unreachable;
+
+    t.debug_console = @typeOf(t.debug_console).init(c.allocator);
 
     t.prng = std.rand.DefaultPrng.init(@intCast(u64, c.getRandomSeed()));
     t.rand = &t.prng.random;

@@ -183,6 +183,12 @@ pub const Vec3 = struct {
         };
     }
 
+    pub inline fn addInPlace(v: *Vec3, other: Vec3) void {
+        v.x = v.x + other.x;
+        v.y = v.y + other.y;
+        v.z = v.z + other.z;
+    }
+
     pub fn add(v: Vec3, other: Vec3) Vec3 {
         return Vec3{
             .x = v.x + other.x,

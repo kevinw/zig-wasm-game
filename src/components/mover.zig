@@ -8,6 +8,6 @@ pub const Mover = struct {
 };
 
 pub fn update(gs: *GameSession, mover: *Mover, sprite: *Sprite) bool {
-    sprite.pos = sprite.pos.add(mover.vel.multScalar(Time.delta_time));
+    sprite.pos.addInPlace(mover.vel.multScalar(Time.delta_time));
     return true;
 }
