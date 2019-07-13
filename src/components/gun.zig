@@ -6,6 +6,8 @@ const Sprite = @import("sprite.zig").Sprite;
 const prefabs = @import("../prefabs.zig");
 
 pub const Gun = struct {
+    offset: Vec3 = vec3(0, 0, 0),
+
     fire_left: bool = false,
     fire_right: bool = false,
     fire_up: bool = false,
@@ -32,7 +34,9 @@ pub fn update(gs: *GameSession, gun: *Gun, sprite: *Sprite) bool {
         if (dir.length() > 0.000001) {
             dir = dir.multScalar(gun.bullet_speed);
             //log("{} {} {}", dir.x, dir.y, dir.z);
-            _ = fire(gs, sprite.pos, dir) catch unreachable;
+
+            const origin = sprite.pos.add(gun.offset);
+            _ = fire(gs, origin, dir) catch unreachable;
         }
     }
 

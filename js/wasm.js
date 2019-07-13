@@ -26,7 +26,7 @@ function copyBytesToWASM(str) {
     return {success: true, ptr, len};
 }
 
-function fetchImage(url) {
+function fetchImage(url, token) {
     var image = new Image();
     image.onload = function() {
         var canvas = document.createElement('canvas');
@@ -37,25 +37,26 @@ function fetchImage(url) {
         var ctx = canvas.getContext('2d');
         ctx.drawImage(this, 0, 0);
         const imageData = ctx.getImageData(0, 0, w, h);
-        sendOnFetch(imageData.width, imageData.height, imageData.data);
+        sendOnFetch(imageData.width, imageData.height, imageData.data, token);
     };
     image.src = url;
 }
 
-function sendOnFetch(width, height, bytes) {
+function sendOnFetch(width, height, bytes, token) {
     var res = copyBytesToWASM(bytes);
     if (res.success) {
-        setTimeout(function() { exports.onFetch(width, height, res.ptr, res.len); }, 0);
+        setTimeout(function() { exports.onFetch(width, height, res.ptr, res.len, token); }, 0);
     } else {
         console.error("copyBytesToWASM failed");
     }
 }
 
-const fetchBytes = (ptr, len) => {
+const fetchBytes = (ptr, len, token) => {
     var url = readCharStr(ptr, len);
     if (url.endsWith(".png")) {
-        fetchImage(url);
+        fetchImage(url, token);
     } else {
+        throw "unimplemented";
         fetch(url)
             .then(response => response.arrayBuffer())
             .then(bytes => {

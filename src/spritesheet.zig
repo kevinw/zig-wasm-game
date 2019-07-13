@@ -35,7 +35,6 @@ pub const Spritesheet = struct {
     }
 
     pub fn init(s: *Spritesheet, raw_img: RawImage, w: usize, h: usize) !void {
-        s.did_init = true;
         s.img = raw_img;
         const col_count = s.img.width / w;
         const row_count = s.img.height / h;
@@ -109,6 +108,8 @@ pub const Spritesheet = struct {
             c.glBindBuffer(c.GL_ARRAY_BUFFER, tex_coord_buffer);
             c.glBufferData(c.GL_ARRAY_BUFFER, 4 * 2 * @sizeOf(c.GLfloat), &tex_coords[0][0], c.GL_STATIC_DRAW);
         }
+
+        s.did_init = true;
     }
 
     pub fn deinit(s: *Spritesheet) void {

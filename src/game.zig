@@ -39,7 +39,7 @@ pub const Game = struct {
     game_over: bool,
     font: Spritesheet,
     player: Spritesheet,
-    player_sprite_index: u16,
+    bullet_sprite: Spritesheet,
     ghost_y: i32,
     framebuffer_width: c_int,
     framebuffer_height: c_int,
