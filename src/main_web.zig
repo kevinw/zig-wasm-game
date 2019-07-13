@@ -100,17 +100,12 @@ export fn onFetch(width: c_uint, height: c_uint, bytes_ptr: c_uint, bytes_len: c
     var flippedSlice = reverseImageY(slice, pitch) catch unreachable;
     defer c.allocator.free(flippedSlice);
 
-    //c.log("got slice: '{}'", slice.len);
-    const raw_image = RawImage{
+    fetch.didFetch(token, RawImage{
         .width = width,
         .height = height,
         .pitch = pitch,
         .raw = flippedSlice,
-    };
-
-    c.log("width: {}, height: {}", width, height);
-
-    fetch.didFetch(token, raw_image);
+    });
 }
 
 export fn onInit() void {

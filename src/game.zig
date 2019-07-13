@@ -1,9 +1,9 @@
-usingnamespace @import("math3d.zig");
+usingnamespace @import("components.zig");
+usingnamespace @import("globals.zig");
 
 const std = @import("std");
 const os = std.os;
 const c = @import("platform.zig");
-const panic = c.panic;
 const bufPrint = std.fmt.bufPrint;
 const debug_gl = @import("debug_gl.zig");
 const AllShaders = @import("all_shaders.zig").AllShaders;
@@ -15,12 +15,8 @@ const Spritesheet = @import("spritesheet.zig").Spritesheet;
 const embedImage = @import("png.zig").embedImage;
 const RawImage = @import("png.zig").RawImage;
 const DebugConsole = @import("debug_console.zig").DebugConsole;
-
 const gbe = @import("gbe");
 const prefabs = @import("prefabs.zig");
-
-usingnamespace @import("components.zig");
-usingnamespace @import("globals.zig");
 const GameSession = @import("session.zig").GameSession;
 
 const WHITE = vec4(1, 1, 1, 1);
@@ -261,8 +257,6 @@ pub fn restartGame(t: *Game) void {
     t.debug_console.reset();
 
     t.session.init(42, c.allocator);
-
-    c.log("before spawn");
 
     _ = prefabs.Player.spawn(&t.session, prefabs.Player.Params{}) catch unreachable;
 
