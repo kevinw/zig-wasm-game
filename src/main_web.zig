@@ -3,6 +3,7 @@ const assert = std.debug.assert;
 const os = std.os;
 const builtin = @import("builtin");
 usingnamespace @import("globals.zig");
+const fetch = @import("fetch.zig");
 
 // until std has better wasm panic
 pub fn panic(msg: []const u8, error_return_trace: ?*builtin.StackTrace) noreturn {
@@ -26,7 +27,7 @@ const RawImage = @import("png.zig").RawImage;
 
 const font_raw = embedImage("../assets/fontx.bin", 576, 128, 32);
 
-inline fn GameState() *game.Game {
+pub inline fn GameState() *game.Game {
     return &game.game_state;
 }
 
@@ -81,7 +82,9 @@ fn reverseImageY(bytes: []u8, pitch: u32) ![]u8 {
     return new_bytes;
 }
 
-export fn onFetch(width: c_uint, height: c_uint, bytes_ptr: c_uint, bytes_len: c_uint) void {
+var vertex_array_object: c.GLuint = undefined;
+
+export fn onFetch(width: c_uint, height: c_uint, bytes_ptr: c_uint, bytes_len: c_uint, token: c_uint) void {
     //c.log("FROM WASM ON FETCH {} {}", bytes_ptr, bytes_len);
     if (bytes_len == 0 or bytes_ptr == 0) {
         c.log("error: bytes_len or bytes_ptr was zero");
@@ -105,12 +108,11 @@ export fn onFetch(width: c_uint, height: c_uint, bytes_ptr: c_uint, bytes_len: c
         .raw = flippedSlice,
     };
 
-    GameState().player.init(raw_image, 48, 48) catch |err| {
-        c.log("error initializing player sprite {}", err);
-    };
+    c.log("width: {}, height: {}", width, height);
+
+    fetch.didFetch(token, raw_image);
 }
 
-var vertex_array_object: c.GLuint = undefined;
 export fn onInit() void {
     const t = GameState();
     t.framebuffer_width = 800;
@@ -141,7 +143,8 @@ export fn onInit() void {
 
     debug_gl.assertNoError();
 
-    fetchBytes("assets/face.png");
+    fetch.fromCellSize("assets/face.png", &t.player, 48, 48) catch unreachable;
+    fetch.fromCellSize("assets/bullet.png", &t.bullet_sprite, 10, 10) catch unreachable;
 }
 
 pub fn fetchBytes(url: []const u8) void {
