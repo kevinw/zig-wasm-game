@@ -247,6 +247,19 @@ pub fn didImageLoad() void {
     tetris_state.is_loading = false;
 }
 
+var equation_text: []const u8 = "return x * y;\n}";
+
+pub fn update_equation(t: *Game, eq_text: []const u8) void {
+    const slices = [_][]const u8{
+        "return (",
+        eq_text[0..eq_text.len],
+        ");\n}",
+    };
+
+    equation_text = std.mem.concat(c.allocator, u8, slices) catch unreachable;
+    restartGame(t);
+}
+
 pub fn restartGame(t: *Game) void {
     t.game_over = false;
     t.is_paused = false;
@@ -265,7 +278,12 @@ pub fn restartGame(t: *Game) void {
         \\}
     ;
 
-    const frag = @embedFile("../assets/mojulo_frag.glsl");
+    const fragTemplate = @embedFile("../assets/mojulo_frag.glsl");
+    //const frag = std.fmt.allocPrint(c.allocator, fragTemplate) catch unreachable;
+    //pub fn concat(allocator: *Allocator, comptime T: type, slices: []const []const T) ![]T {
+
+    const slices = [_][]const u8{ fragTemplate, equation_text };
+    const frag = std.mem.concat(c.allocator, u8, slices) catch unreachable;
 
     //const fragTemplate = @embedFile("../assets/mojulo_frag.glsl");
 

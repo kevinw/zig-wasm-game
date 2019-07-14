@@ -14,6 +14,7 @@
       <div class="col">
         <div class="wrapper">
           <canvas id="canvasgl" width="800" height="450"></canvas>
+            <input id="equation-input" type="text" value="x" />
         </div>
         WASD to move, IJKL to shoot
       </div>
@@ -58,6 +59,18 @@
           document.addEventListener('mouseup', e => instance.exports.onMouseUp(e.button, e.x, e.y));
           document.addEventListener('mousemove', e => instance.exports.onMouseMove(e.x, e.y));
           document.addEventListener('resize', e => instance.exports.onResize(e.width, e.height));
+
+            const eqInp = document.getElementById("equation-input");
+            eqInp.addEventListener("keyup", function(e) {
+                if (event.key === "Enter") {
+                    var res = copyBytesToWASM(eqInp.value);
+                    if (res.success) {
+                        instance.exports.onEquation(res.ptr, res.len);
+                    } else {
+                        console.error("error copying bytes to wasm");
+                    }
+                }
+            });
 
           function step(timestamp) {
             onAnimationFrame(timestamp);

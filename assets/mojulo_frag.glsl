@@ -12,13 +12,13 @@ float randFromVec2(vec2 co){
 
 float rand() { return randFromVec2(FragTexCoord); }
 
-void main(void) {
-    float x = FragTexCoord.x * 100.0;
-    float y = FragTexCoord.y * 100.0;
+float equation();
 
+void main(void) {
     // OUTPUT
     //float VAL = x*y*sin(time);
-    float VAL = x*time * rand()*40.0;
+    //float VAL = x*time * rand()*40.0;
+    float VAL = equation();
 
     //int color = floatBitsToInt(VAL);
     int color = int(VAL);
@@ -29,3 +29,8 @@ void main(void) {
     //FragColor = vec4(R/255.0, G/255.0, B/255.0, 1.0);
     FragColor = vec4(rgb, 1);
 }
+
+float equation() {
+    float x = FragTexCoord.x * 100.0;
+    float y = FragTexCoord.y * 100.0;
+

@@ -31,6 +31,12 @@ pub inline fn GameState() *game.Game {
     return &game.game_state;
 }
 
+export fn onEquation(eq_ptr: c_uint, eq_len: c_uint) void {
+    var slice = @intToPtr([*]u8, eq_ptr)[0..eq_len];
+    defer c.allocator.free(slice);
+    game.update_equation(GameState(), slice);
+}
+
 export fn onKeyDown(keyCode: c_int, state: u8, repeat: c_int) void {
     //if (state == 0) return;
     if (repeat > 0) return;
@@ -92,8 +98,7 @@ export fn onFetch(width: c_uint, height: c_uint, bytes_ptr: c_uint, bytes_len: c
         return;
     }
 
-    var rawSlice = @intToPtr([*]u8, bytes_ptr);
-    var slice = rawSlice[0..bytes_len];
+    var slice = @intToPtr([*]u8, bytes_ptr)[0..bytes_len];
     defer c.allocator.free(slice);
 
     const pitch = bytes_len / height;
