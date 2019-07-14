@@ -1,10 +1,12 @@
 pub const Destroy_Timer = @import("components/destroy_timer.zig").Destroy_Timer;
 pub const Gun = @import("components/gun.zig").Gun;
+pub const LiveShader = @import("components/liveshader.zig").LiveShader;
+pub const Mojulo = @import("components/mojulo.zig").Mojulo;
 pub const Mover = @import("components/mover.zig").Mover;
 pub const Player = @import("components/player.zig").Player;
 pub const Sprite = @import("components/sprite.zig").Sprite;
-
 usingnamespace @import("session.zig");
+
 const Destroy_Timer_SystemData = struct {
     id: EntityId,
     timer: *Destroy_Timer,
@@ -17,8 +19,8 @@ inline fn Destroy_Timer_think(gs: *GameSession, self: Destroy_Timer_SystemData) 
     return @inlineCall(mod.update, gs, self.timer);
 }
         
-
 usingnamespace @import("session.zig");
+
 const Gun_SystemData = struct {
     id: EntityId,
     gun: *Gun,
@@ -32,8 +34,36 @@ inline fn Gun_think(gs: *GameSession, self: Gun_SystemData) bool {
     return @inlineCall(mod.update, gs, self.gun, self.sprite);
 }
         
-
 usingnamespace @import("session.zig");
+
+const LiveShader_SystemData = struct {
+    id: EntityId,
+    live_shader: *LiveShader,
+};
+
+pub const run_LiveShader = GameSession.buildSystem(LiveShader_SystemData, LiveShader_think);
+
+inline fn LiveShader_think(gs: *GameSession, self: LiveShader_SystemData) bool {
+    const mod = @import("components/liveshader.zig");
+    return @inlineCall(mod.update, gs, self.live_shader);
+}
+        
+usingnamespace @import("session.zig");
+
+const Mojulo_SystemData = struct {
+    id: EntityId,
+    m: *Mojulo,
+};
+
+pub const run_Mojulo = GameSession.buildSystem(Mojulo_SystemData, Mojulo_think);
+
+inline fn Mojulo_think(gs: *GameSession, self: Mojulo_SystemData) bool {
+    const mod = @import("components/mojulo.zig");
+    return @inlineCall(mod.update, gs, self.m);
+}
+        
+usingnamespace @import("session.zig");
+
 const Mover_SystemData = struct {
     id: EntityId,
     mover: *Mover,
@@ -47,8 +77,8 @@ inline fn Mover_think(gs: *GameSession, self: Mover_SystemData) bool {
     return @inlineCall(mod.update, gs, self.mover, self.sprite);
 }
         
-
 usingnamespace @import("session.zig");
+
 const Player_SystemData = struct {
     id: EntityId,
     player: *Player,
@@ -63,8 +93,8 @@ inline fn Player_think(gs: *GameSession, self: Player_SystemData) bool {
     return @inlineCall(mod.update, gs, self.player, self.sprite, self.gun);
 }
         
-
 usingnamespace @import("session.zig");
+
 const Sprite_SystemData = struct {
     id: EntityId,
     sprite: *Sprite,
@@ -80,6 +110,8 @@ inline fn Sprite_think(gs: *GameSession, self: Sprite_SystemData) bool {
 pub fn run_ALL(gs: *GameSession) void {
     run_Destroy_Timer(gs);
     run_Gun(gs);
+    run_LiveShader(gs);
+    run_Mojulo(gs);
     run_Mover(gs);
     run_Player(gs);
     run_Sprite(gs);

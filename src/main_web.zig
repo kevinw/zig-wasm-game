@@ -31,8 +31,9 @@ pub inline fn GameState() *game.Game {
     return &game.game_state;
 }
 
-export fn onKeyDown(keyCode: c_int, state: u8) void {
+export fn onKeyDown(keyCode: c_int, state: u8, repeat: c_int) void {
     //if (state == 0) return;
+    if (repeat > 0) return;
     const t = GameState();
     switch (keyCode) {
         c.KEY_ESCAPE, c.KEY_P => game.userTogglePause(t),

@@ -54,12 +54,12 @@ def process_component_file(output, filename, to_import):
 
     lines = []
     if component_name is not None:
+        lines.append("""usingnamespace @import("session.zig");""")
         to_import.add(component_name)
         for typename in set(t for v, t in reqs):
             if typename.startswith("*"): typename = typename[1:]
             to_import.add(typename)
         lines.append(f"""
-usingnamespace @import("session.zig");
 const {component_name}_SystemData = struct {{
     id: EntityId,""")
         lines.extend(f"    {var_name}: {type_name}," for var_name, type_name in reqs)

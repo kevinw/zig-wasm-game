@@ -8,7 +8,6 @@ const bufPrint = std.fmt.bufPrint;
 const debug_gl = @import("debug_gl.zig");
 const AllShaders = @import("all_shaders.zig").AllShaders;
 const static_geometry = @import("static_geometry.zig");
-const StaticGeometry = static_geometry.StaticGeometry;
 const pieces = @import("pieces.zig");
 const Piece = pieces.Piece;
 const Spritesheet = @import("spritesheet.zig").Spritesheet;
@@ -18,8 +17,11 @@ const DebugConsole = @import("debug_console.zig").DebugConsole;
 const gbe = @import("gbe");
 const prefabs = @import("prefabs.zig");
 const GameSession = @import("session.zig").GameSession;
+const ShaderProgram = @import("all_shaders.zig").ShaderProgram;
 
 const WHITE = vec4(1, 1, 1, 1);
+const WINDOW_WIDTH = 800;
+const WINDOW_HEIGHT = 450;
 
 pub var game_state: Game = undefined;
 
@@ -28,7 +30,8 @@ pub const Game = struct {
     session: GameSession,
     debug_console: DebugConsole,
     all_shaders: AllShaders,
-    static_geometry: StaticGeometry,
+    static_geometry: static_geometry.StaticGeometry,
+    test_shader: ShaderProgram,
     projection: Mat4x4,
     prng: std.rand.DefaultPrng,
     rand: *std.rand.Random,
@@ -42,6 +45,7 @@ pub const Game = struct {
     level: i32,
     is_paused: bool,
     is_loading: bool,
+    mojulo: Mojulo,
 
     pub fn is_playing(self: Self) void {
         return !(self.is_paused || self.game_over || self.is_loading);
@@ -99,14 +103,28 @@ const AUDIO_BUFFER_SIZE = 2048;
 
 const a: f32 = 0.1;
 
-var beep = blk: {
-    @setEvalBranchQuota(AUDIO_BUFFER_SIZE * 2 + 1);
-    var b = [_]f32{0} ** AUDIO_BUFFER_SIZE;
-    for (b) |*x, i| {
-        x.* = if ((i / 64) % 2 == 1) a else -a;
+fn fillRectShader(s: *ShaderProgram, t: *Game, x: f32, y: f32, w: f32, h: f32) void {
+    s.bind();
+
+    const model = mat4x4_identity.translate(x, y, 0.0).scale(w, h, 0.0);
+    s.setUniformMat4x4(s.uniformLoc("MVP"), t.projection.mult(model));
+    s.setUniformFloat(s.uniformLoc("time"), Time.time);
+
+    {
+        c.glBindBuffer(c.GL_ARRAY_BUFFER, t.static_geometry.rect_2d_vertex_buffer);
+        const attribPos = s.attribLoc("VertexPosition");
+        c.glEnableVertexAttribArray(@intCast(c.GLuint, attribPos));
+        c.glVertexAttribPointer(@intCast(c.GLuint, attribPos), 3, c.GL_FLOAT, c.GL_FALSE, 0, if (c.is_web) 0 else null);
     }
-    break :blk b;
-};
+    {
+        c.glBindBuffer(c.GL_ARRAY_BUFFER, t.static_geometry.rect_2d_tex_coord_buffer);
+        const attribLoc = s.attribLoc("TexCoord");
+        c.glEnableVertexAttribArray(@intCast(c.GLuint, attribLoc));
+        c.glVertexAttribPointer(@intCast(c.GLuint, attribLoc), 2, c.GL_FLOAT, c.GL_FALSE, 0, if (c.is_web) 0 else null);
+    }
+
+    c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+}
 
 fn fillRectMvp(t: *Game, color: Vec4, mvp: Mat4x4) void {
     t.all_shaders.primitive.bind();
@@ -116,7 +134,6 @@ fn fillRectMvp(t: *Game, color: Vec4, mvp: Mat4x4) void {
     c.glBindBuffer(c.GL_ARRAY_BUFFER, t.static_geometry.rect_2d_vertex_buffer);
     c.glEnableVertexAttribArray(@intCast(c.GLuint, t.all_shaders.primitive_attrib_position));
     c.glVertexAttribPointer(@intCast(c.GLuint, t.all_shaders.primitive_attrib_position), 3, c.GL_FLOAT, c.GL_FALSE, 0, if (c.is_web) 0 else null);
-
     c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 }
 
@@ -124,28 +141,6 @@ fn fillRect(t: *Game, color: Vec4, x: f32, y: f32, w: f32, h: f32) void {
     const model = mat4x4_identity.translate(x, y, 0.0).scale(w, h, 0.0);
     const mvp = t.projection.mult(model);
     fillRectMvp(t, color, mvp);
-}
-
-fn drawParticle(t: *Game, p: Particle) void {
-    const model = mat4x4_identity.translateByVec(p.pos).rotate(p.angle, p.axis).scale(p.scale_w, p.scale_h, 0.0);
-
-    const mvp = t.projection.mult(model);
-
-    t.all_shaders.primitive.bind();
-    t.all_shaders.primitive.setUniformVec4(t.all_shaders.primitive_uniform_color, p.color);
-    t.all_shaders.primitive.setUniformMat4x4(t.all_shaders.primitive_uniform_mvp, mvp);
-
-    c.glBindBuffer(c.GL_ARRAY_BUFFER, t.static_geometry.triangle_2d_vertex_buffer);
-    c.glEnableVertexAttribArray(@intCast(c.GLuint, t.all_shaders.primitive_attrib_position));
-    c.glVertexAttribPointer(@intCast(c.GLuint, t.all_shaders.primitive_attrib_position), 3, c.GL_FLOAT, c.GL_FALSE, 0, if (c.is_web) 0 else null);
-
-    c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 3);
-}
-
-fn drawFallingBlock(t: *Game, p: Particle) void {
-    const model = mat4x4_identity.translateByVec(p.pos).rotate(p.angle, p.axis).scale(p.scale_w, p.scale_h, 0.0);
-    const mvp = t.projection.mult(model);
-    fillRectMvp(t, p.color, mvp);
 }
 
 fn drawCenteredText(t: *Game, text: []const u8, scale: f32, color: Vec4) void {
@@ -172,6 +167,7 @@ pub fn draw(t: *Game) void {
     } else if (t.is_paused) {
         drawCenteredText(t, "PAUSED", 1.0, WHITE);
     } else {
+        fillRectShader(&t.test_shader, t, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
         //drawCenteredText(t, "play", 4.0, vec4(1, 1, 1, 0.5));
         const color = vec4(1, 1, 1, 1);
 
@@ -256,9 +252,36 @@ pub fn restartGame(t: *Game) void {
     t.is_paused = false;
     t.debug_console.reset();
 
-    t.session.init(42, c.allocator);
+    const vert =
+        \\#version 300 es
+        \\precision mediump float;
+        \\in vec3 VertexPosition;
+        \\in vec2 TexCoord;
+        \\out vec2 FragTexCoord;
+        \\uniform mat4 MVP;
+        \\void main(void) {
+        \\    FragTexCoord = TexCoord;
+        \\    gl_Position = vec4(VertexPosition, 1.0) * MVP;
+        \\}
+    ;
 
-    _ = prefabs.Player.spawn(&t.session, prefabs.Player.Params{}) catch unreachable;
+    const frag = @embedFile("../assets/mojulo_frag.glsl");
+
+    //const fragTemplate = @embedFile("../assets/mojulo_frag.glsl");
+
+    //const frag = blk: {
+    //    @setEvalBranchQuota(5000);
+    //    const frag = std.fmt.allocPrint(c.allocator, fragTemplate) catch unreachable;
+    //    defer c.allocator.free(frag);
+    //    break :blk frag;
+    //};
+
+    t.test_shader = ShaderProgram.create(vert, frag, null);
+
+    const gs = &t.session;
+    gs.init(42, c.allocator);
+    _ = prefabs.Player.spawn(gs, prefabs.Player.Params{}) catch unreachable;
+    const mojulo_id = prefabs.Mojulo.spawn(gs, vec3(20, 80, 0));
 
     if (t.session.findFirst(Sprite)) |spr| {
         spr.spritesheet = &t.player;

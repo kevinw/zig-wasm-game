@@ -1,1 +1,3 @@
+live reload of shader code--how to work with asset pipeline?
+    - easiest answer is to have the live reload shader watch .glsl files
 https://prideout.net/blog/par_streamlines/

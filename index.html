@@ -52,7 +52,7 @@
 
           const onAnimationFrame = instance.exports.onAnimationFrame;
 
-          document.addEventListener('keydown', e => instance.exports.onKeyDown(e.keyCode, 1));
+          document.addEventListener('keydown', e => instance.exports.onKeyDown(e.keyCode, 1, e.repeat));
           document.addEventListener('keyup', e => instance.exports.onKeyUp(e.keyCode, 0));
           document.addEventListener('mousedown', e => instance.exports.onMouseDown(e.button, e.x, e.y));
           document.addEventListener('mouseup', e => instance.exports.onMouseUp(e.button, e.x, e.y));
