@@ -6,7 +6,7 @@ const FnPtr = fn () f64;
 
 const EvalError = error{
     NotImplemented,
-    FunctionNotFound,
+    IdentifierNotFound,
     ParseFloat,
     ParserOutOfMemory,
     ExpectedOpenParen,
@@ -26,7 +26,7 @@ const verbose = if (VERBOSE) logVerbose else logNoOp;
 ///
 /// TODO: is there a more type-safe way to do this (while remaining
 /// relatively succinct?)
-const Function = struct {
+pub const Function = struct {
     const Self = @This();
 
     fptr: fn () f64,
@@ -44,9 +44,29 @@ const Function = struct {
     }
 };
 
-const Expr = union(enum) {
+pub const Variable = struct {
+    name: []const u8,
+    address: *f64,
+
+    pub fn init(name: []const u8, address: *f64) Variable {
+        return Variable{
+            .name = name,
+            .address = address,
+        };
+    }
+};
+
+pub const Expr = union(enum) {
     Constant: f64,
     Function: Function,
+    Variable: Variable,
+
+    fn IsFunction(s: *Expr) bool {
+        return switch (s.*) {
+            Function => true,
+            else => false,
+        };
+    }
 };
 
 const TokenType = enum {
@@ -59,6 +79,7 @@ const TokenType = enum {
     Sep,
     Error,
     Call,
+    Variable,
 };
 
 inline fn isDigit(ch: u8) bool {
@@ -66,7 +87,11 @@ inline fn isDigit(ch: u8) bool {
 }
 
 inline fn isLetter(ch: u8) bool {
-    return ch >= 'a' and ch <= 'z';
+    return (ch >= 'a' and ch <= 'z') or (ch >= 'A' and ch <= 'Z');
+}
+
+inline fn isIdentifier(ch: u8) bool {
+    return isLetter(ch) or isDigit(ch) or ch == '_';
 }
 
 const Func = union(enum) {
@@ -77,7 +102,7 @@ const Func = union(enum) {
     const MAX_ARITY = 2;
 };
 
-const FuncCall = struct {
+pub const FuncCall = struct {
     const Self = @This();
 
     name: []const u8,
@@ -141,7 +166,17 @@ const FuncCall = struct {
     }
 };
 
-fn findBuiltin(name: []const u8) ?*const FuncCall {
+fn findVariable(s: *State, name: []const u8) ?Variable {
+    for (s.lookup) |variable| {
+        if (std.mem.eql(u8, variable.name, name)) {
+            return variable;
+        }
+    }
+
+    return null;
+}
+
+pub fn findBuiltin(name: []const u8) ?*const FuncCall {
     for (builtinFunctions) |*f| {
         if (f.eqName(name)) {
             return f;
@@ -157,9 +192,30 @@ const State = struct {
     start: []const u8,
     next: []const u8,
     tokenType: TokenType = .Null,
+
+    // TODO: union for value, variable value, or function
+    value: f64 = 0,
+    bound: ?Variable,
     function: ?*const FuncCall,
 
-    value: f64 = 0,
+    lookup: []const Variable,
+
+    fn init(allocator: *std.mem.Allocator, expression: []const u8, variables: []const Variable) State {
+        return State{
+            .allocator = allocator,
+            .start = expression,
+            .next = expression,
+            .function = null,
+            .bound = null,
+            .lookup = variables,
+        };
+    }
+
+    fn createVariable(self: *State, variable: Variable) EvalError!*Expr {
+        const ret = self.allocator.create(Expr) catch return error.ParserOutOfMemory;
+        ret.* = Expr{ .Variable = variable };
+        return ret;
+    }
 
     fn createConstant(self: *State, constant: f64) EvalError!*Expr {
         const ret = self.allocator.create(Expr) catch return error.ParserOutOfMemory;
@@ -168,6 +224,11 @@ const State = struct {
     }
 
     fn create_func(self: *State, fnptr: var, params: ...) EvalError!*Expr {
+        // TODO: how to more accurately check for a function pointer argument?
+        const name = @typeName(@typeOf(fnptr));
+        if (name.len < 3 or name[0] != 'f' or name[1] != 'n' or name[2] != '(')
+            @compileError("expected a function pointer, got '" ++ name ++ "'");
+
         const paramsArray = self.allocator.alloc(*Expr, params.len) catch return EvalError.ParserOutOfMemory;
 
         comptime var i = 0;
@@ -213,27 +274,31 @@ const State = struct {
                 s.tokenType = .Number;
                 s.next = s.next[i..];
             } else {
+                // Look for a variable or builtin function call.
                 if (isLetter(s.next[0])) {
-                    // variable or builtin function call
                     const start = s.next;
 
-                    //while ((s->next[0] >= 'a' && s->next[0] <= 'z') || (s->next[0] >= '0' && s->next[0] <= '9') || (s->next[0] == '_')) s->next++;
-
                     var count: u32 = 0;
-                    while (isLetter(s.next[0]) or isDigit(s.next[0]) or s.next[0] == '_') {
+                    while (s.next.len > 0 and isIdentifier(s.next[0])) : (count += 1) {
                         s.next = s.next[1..];
-                        count += 1;
                     }
-                    const functionName = start[0..count];
+                    const name = start[0..count];
 
-                    var builtinFunc = findBuiltin(functionName);
+                    if (findVariable(s, name)) |variable| {
+                        s.tokenType = .Variable;
+                        s.bound = variable;
+                        break;
+                    }
+
+                    var builtinFunc = findBuiltin(name);
                     if (builtinFunc) |f| {
                         s.tokenType = .Call;
                         s.function = f;
-                    } else {
-                        warn("no builtin named {}\n", functionName);
-                        return error.FunctionNotFound;
+                        break;
                     }
+
+                    warn("error: no builtin function or variable named '{}'\n", name);
+                    return error.IdentifierNotFound;
                 } else {
                     // operator or special character
                     const op = s.next[0];
@@ -255,6 +320,14 @@ const State = struct {
                             s.tokenType = .Infix;
                             s.function = findBuiltin("divide").?;
                         },
+                        '^' => {
+                            s.tokenType = .Infix;
+                            s.function = findBuiltin("pow").?;
+                        },
+                        '%' => {
+                            s.tokenType = .Infix;
+                            s.function = findBuiltin("fmod");
+                        },
                         '(' => {
                             s.tokenType = .Open;
                         },
@@ -266,26 +339,28 @@ const State = struct {
                         },
                         ' ', '\t', '\n', '\r' => {},
                         else => {
+                            warn("invalid next char: {}\n", op);
                             s.tokenType = .Error;
                         },
                     }
                 }
             }
 
-            if (s.tokenType != .Null)
+            if (s.tokenType != .Null) {
                 break;
+            }
         }
     }
 };
 
 fn base(s: *State) EvalError!*Expr {
     switch (s.tokenType) {
-        .Number => blk: {
+        .Number => {
             const ret = s.createConstant(s.value);
             try s.nextToken();
             return ret;
         },
-        .Call => blk2: {
+        .Call => {
             try s.nextToken();
             if (s.tokenType != .Open) return error.ExpectedOpenParen;
 
@@ -308,7 +383,7 @@ fn base(s: *State) EvalError!*Expr {
 
             return s.createFuncWithSlice(f.fnPtr(), parameters.toSlice());
         },
-        .Open => open: {
+        .Open => {
             try s.nextToken();
             const ret = try list(s);
             if (s.tokenType != .Close) {
@@ -316,6 +391,11 @@ fn base(s: *State) EvalError!*Expr {
             } else {
                 try s.nextToken();
             }
+            return ret;
+        },
+        .Variable => {
+            const ret = try s.createVariable(s.bound.?);
+            try s.nextToken();
             return ret;
         },
         else => {
@@ -343,8 +423,43 @@ fn power(s: *State) !*Expr {
 fn factor(s: *State) !*Expr {
     var ret = try power(s);
 
+    var neg = false;
+    var insertion_maybe: ?*Expr = null;
+
+    switch (ret.*) {
+        .Function => |f| {
+            if (@ptrToInt(f.fptr) == @ptrToInt(negate)) {
+                std.debug.assert(f.params.len == 1);
+                const se = f.params[0];
+                free_expr(s.allocator, ret);
+                ret = se;
+                neg = true;
+            }
+        },
+        else => {},
+    }
+
     while (s.tokenType == .Infix and if (s.function) |f| f.eq(pow) else false) {
-        std.debug.panic("not implemented");
+        const t = s.function.?.fnPtr();
+        try s.nextToken();
+
+        if (insertion_maybe) |insertion| {
+            switch (insertion.*) {
+                .Function => |insertion_f| {
+                    var insert = try s.create_func(t, insertion_f.params[1], try power(s));
+                    insertion_f.params[1] = insert;
+                    insertion_maybe = insert;
+                },
+                else => unreachable,
+            }
+        } else {
+            ret = try s.create_func(t, ret, try power(s));
+            insertion_maybe = ret;
+        }
+    }
+
+    if (neg) {
+        ret = try s.create_func(negate, ret);
     }
 
     return ret;
@@ -385,18 +500,14 @@ fn list(s: *State) !*Expr {
     return ret;
 }
 
-pub fn compile(allocator: *std.mem.Allocator, expression: []const u8) !*Expr {
-    var s = State{
-        .allocator = allocator,
-        .start = expression,
-        .next = expression,
-        .function = null,
-    };
+pub fn compile(allocator: *std.mem.Allocator, expression: []const u8, variables: []const Variable) !*Expr {
+    var s = State.init(allocator, expression, variables);
 
     try s.nextToken();
     const root = try list(&s);
     if (s.tokenType != .End) {
-        std.debug.panic("not implemented: not at the end");
+        warn("not implemented: not at the end, s.tokenType is {}\n", s.tokenType);
+        unreachable;
     }
 
     return root;
@@ -406,11 +517,11 @@ pub fn free_expr(allocator: *std.mem.Allocator, e: *Expr) void {
     allocator.destroy(e);
 }
 
-pub fn interp(allocator: *std.mem.Allocator, expr_str: []const u8) !f64 {
+pub fn interp(allocator: *std.mem.Allocator, expr_str: []const u8, variables: []const Variable) !f64 {
     if (expr_str.len == 0)
         return error.EmptyExpression;
 
-    const expression = try compile(allocator, expr_str);
+    const expression = try compile(allocator, expr_str, variables);
     defer free_expr(allocator, expression);
 
     return try eval(allocator, expression);
@@ -420,27 +531,32 @@ pub fn eval(allocator: *std.mem.Allocator, expression: *const Expr) !f64 {
     return switch (expression.*) {
         .Constant => |val| val,
         .Function => |func| func.call(allocator),
+        .Variable => |bound| bound.address.*,
         else => return error.NotImplemented,
     };
 }
 
 fn assertInterp(expr_str: []const u8, expected_result: f64) !void {
+    return assertInterpVars(expr_str, expected_result, [_]Variable{});
+}
+
+fn assertInterpVars(expr_str: []const u8, expected_result: f64, variables: []const Variable) !void {
     var bytes: [1000]u8 = undefined;
     var fba = std.heap.FixedBufferAllocator.init(bytes[0..]);
     const allocator = &fba.allocator;
 
-    const result = try interp(allocator, expr_str);
+    const result = try interp(allocator, expr_str, variables);
     if (result != expected_result) {
         std.debug.panic("expected {}, got {}", expected_result, result);
     }
 }
 
 fn fmod(a: f64, b: f64) f64 {
-    std.debug.panic("todo: implement fmod");
+    return std.math.mod(f64, a, b) catch unreachable; // TODO
 }
 
 fn pow(base_n: f64, exponent: f64) f64 {
-    std.debug.panic("todo: implement pow");
+    return std.math.pow(f64, base_n, exponent);
 }
 
 fn negate(a: f64) f64 {
@@ -487,7 +603,7 @@ fn min(a: f64, b: f64) f64 {
     return if (a < b) a else b;
 }
 
-const builtinFunctions = [_]FuncCall{
+pub const builtinFunctions = [_]FuncCall{
     FuncCall.init("abs", fabs),
     FuncCall.init("add", add),
     FuncCall.init("sub", sub),
@@ -497,6 +613,8 @@ const builtinFunctions = [_]FuncCall{
     FuncCall.init("cos", cos),
     FuncCall.init("max", max),
     FuncCall.init("min", min),
+    FuncCall.init("pow", pow),
+    FuncCall.init("fmod", fmod),
 };
 
 test "infix operators" {
@@ -507,6 +625,7 @@ test "infix operators" {
     try assertInterp("3*3*3", 27.0);
     try assertInterp("12/2", 6.0);
     try assertInterp("5/10", 0.5);
+    try assertInterp("3^2", 9);
 }
 
 test "parens" {
@@ -541,4 +660,21 @@ test "negation" {
     try assertInterp("-1*-1", 1.0);
     try assertInterp("--1", 1.0);
     try assertInterp("--1", 1.0);
+}
+
+var PI: f64 = std.math.pi;
+
+const testVars = [_]Variable{Variable{ .name = "PI", .address = &PI }};
+
+test "variables" {
+    try assertInterpVars("PI", 3.141592653589793, testVars[0..]);
+
+    var x: f64 = 0;
+    var xPtr = &x;
+    const vars = [_]Variable{Variable.init("x", xPtr)};
+
+    while (x < 20) {
+        x += 1.5;
+        try assertInterpVars("x", x, vars);
+    }
 }
