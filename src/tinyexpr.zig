@@ -16,6 +16,13 @@ fn logVerbose(comptime s: []const u8, args: ...) void {
 }
 const verbose = if (VERBOSE) logVerbose else logNoOp;
 
+/// a wrapper for a function pointer bound to be called later with a set of
+/// parameters.  we assume that the runtime-length of the parameters slice
+/// is the actual arity of the function pointer, and we cast it to reflect
+/// that before calling it.
+///
+/// TODO: is there a more type-safe way to do this (while remaining
+/// relatively succinct?)
 const Function = struct {
     const Self = @This();
 
@@ -29,7 +36,7 @@ const Function = struct {
             1 => @ptrCast(fn (f64) f64, f)(try eval(allocator, self.params[0])),
             2 => @ptrCast(fn (f64, f64) f64, f)(try eval(allocator, self.params[0]), try eval(allocator, self.params[1])),
             3 => @ptrCast(fn (f64, f64, f64) f64, f)(try eval(allocator, self.params[0]), try eval(allocator, self.params[1]), try eval(allocator, self.params[2])),
-            else => |n| std.debug.panic("got {} params", n),
+            else => unreachable,
         };
     }
 };
@@ -37,15 +44,6 @@ const Function = struct {
 const Expr = union(enum) {
     Constant: f64,
     Function: Function,
-
-    fn initFunction(allocator: *std.mem.Allocator, fptr: var, params: []*Expr) EvalError!Expr {
-        return Expr{
-            .Function = Function{
-                .fptr = @ptrCast(FnPtr, fptr),
-                .params = params,
-            },
-        };
-    }
 };
 
 const TokenType = enum {
@@ -68,9 +66,93 @@ inline fn isLetter(ch: u8) bool {
     return ch >= 'a' and ch <= 'z';
 }
 
-//const builtinFunctions = [_]FuncCall{FuncCall{ .name = "abs", .function = FuncPtr{ .Func1 = fabs } }};
+const Func = union(enum) {
+    Fn0: fn () f64,
+    Fn1: fn (f64) f64,
+    Fn2: fn (f64, f64) f64,
 
-//fn findBuiltin(s: *const State, name: []const u8) ?*const FuncCall {
+    const MAX_ARITY = 2;
+};
+
+const FuncCall = struct {
+    const Self = @This();
+
+    name: []const u8,
+    func: Func,
+
+    fn arity(self: *const Self) usize {
+        return switch (self.func) {
+            .Fn0 => 0,
+            .Fn1 => 1,
+            .Fn2 => 2,
+        };
+    }
+
+    fn call(self: *const Self, params: ...) f64 {
+        comptime const N = params.len;
+        var args: [Func.MAX_ARITY]f64 = undefined;
+
+        comptime var i = 0;
+        comptime const len = params.len;
+        inline while (i < len) : (i += 1) args[i] = params[i];
+
+        return switch (self.func) {
+            .Fn0 => |f| f(),
+            .Fn1 => |f| f(args[0]),
+            .Fn2 => |f| f(args[0], args[1]),
+        };
+    }
+
+    fn eq(self: *const Self, function: var) bool {
+        return switch (self.func) {
+            .Fn0 => |f| @ptrToInt(f) == @ptrToInt(function),
+            .Fn1 => |f| @ptrToInt(f) == @ptrToInt(function),
+            .Fn2 => |f| @ptrToInt(f) == @ptrToInt(function),
+        };
+    }
+
+    fn fnPtr(self: *const Self) FnPtr {
+        return switch (self.func) {
+            .Fn0 => |f| @ptrCast(FnPtr, f),
+            .Fn1 => |f| @ptrCast(FnPtr, f),
+            .Fn2 => |f| @ptrCast(FnPtr, f),
+        };
+    }
+
+    fn eqName(self: *const Self, name: []const u8) bool {
+        return std.mem.eql(u8, self.name, name);
+    }
+
+    fn init(name: []const u8, function: var) FuncCall {
+        return FuncCall{
+            .name = name,
+            .func = switch (@typeOf(function)) {
+                fn () f64 => Func{ .Fn0 = function },
+                fn (f64) f64 => Func{ .Fn1 = function },
+                fn (f64, f64) f64 => Func{ .Fn2 = function },
+                else => unreachable,
+            },
+        };
+    }
+};
+
+const builtinFunctions = [_]FuncCall{
+    FuncCall.init("abs", fabs),
+    FuncCall.init("add", add),
+    FuncCall.init("sub", sub),
+    FuncCall.init("mul", mul),
+    FuncCall.init("divide", divide),
+};
+
+fn findBuiltin(name: []const u8) ?*const FuncCall {
+    for (builtinFunctions) |*f| {
+        if (f.eqName(name)) {
+            return f;
+        }
+    }
+
+    return null;
+}
 //if (VERBOSE) warn("finding builtin {}\n", name);
 //for (builtinFunctions) |builtin_func| {
 //if (std.mem.eql(u8, builtin_func.name, name)) {
@@ -88,15 +170,28 @@ const State = struct {
     start: []const u8,
     next: []const u8,
     tokenType: TokenType = .Null,
-    function: ?fn () f64,
+    function: ?*const FuncCall,
 
     value: f64 = 0,
 
-    fn create_func_expr(self: *State, fnptr: var, params: []*Expr) EvalError!*Expr {
+    fn create_func(self: *State, fnptr: var, params: ...) EvalError!*Expr {
+        const paramsArray = self.allocator.alloc(*Expr, params.len) catch return EvalError.ParserOutOfMemory;
+
+        comptime var i = 0;
+        comptime const len = params.len;
+        inline while (i < len) : (i += 1) {
+            paramsArray[i] = params[i];
+        }
+
         const e = self.allocator.create(Expr) catch |e| {
             return error.ParserOutOfMemory;
         };
-        e.* = try Expr.initFunction(self.allocator, fnptr, params);
+        e.* = Expr{
+            .Function = Function{
+                .fptr = @ptrCast(FnPtr, fnptr),
+                .params = paramsArray,
+            },
+        };
         return e;
     }
 
@@ -134,19 +229,16 @@ const State = struct {
                         s.next = s.next[1..];
                         count += 1;
                     }
-
                     const functionName = start[0..count];
 
-                    std.debug.panic("todo: find builtin named {}", functionName);
-
-                    //var variable = findBuiltin(s, functionName);
-                    //if (variable) |v| {
-                    //    s.tokenType = .Call;
-                    //    s.function = (variable orelse unreachable).function;
-                    //    if (VERBOSE) warn("parsed function {} {}", functionName, s.function);
-                    //} else {
-                    //    s.tokenType = .Error;
-                    //}
+                    var builtinFunc = findBuiltin(functionName);
+                    if (builtinFunc) |f| {
+                        s.tokenType = .Call;
+                        s.function = f;
+                    } else {
+                        warn("no builtin named {}\n", functionName);
+                        s.tokenType = .Error;
+                    }
                 } else {
                     // operator or special character
                     const op = s.next[0];
@@ -154,19 +246,19 @@ const State = struct {
                     switch (op) {
                         '+' => {
                             s.tokenType = .Infix;
-                            s.function = @ptrCast(FnPtr, add);
+                            s.function = findBuiltin("add").?;
                         },
                         '-' => {
                             s.tokenType = .Infix;
-                            s.function = @ptrCast(FnPtr, sub);
+                            s.function = findBuiltin("sub").?;
                         },
                         '*' => {
                             s.tokenType = .Infix;
-                            s.function = @ptrCast(FnPtr, mul);
+                            s.function = findBuiltin("mul").?;
                         },
                         '/' => {
                             s.tokenType = .Infix;
-                            s.function = @ptrCast(FnPtr, divide);
+                            s.function = findBuiltin("divide").?;
                         },
                         '(' => {
                             s.tokenType = .Open;
@@ -261,34 +353,24 @@ fn base(s: *State) EvalError!*Expr {
     unreachable;
 }
 
-inline fn fnsEq(a: var, b: var) bool {
-    return @ptrCast(@typeOf(b), a) == b;
-}
-
 fn power(s: *State) !*Expr {
     var sign: i32 = 1;
-    while (s.tokenType == .Infix and (if (s.function) |f| fnsEq(f, add) or fnsEq(f, sub) else false)) {
+    while (s.tokenType == .Infix and (if (s.function) |f| f.eq(add) or f.eq(sub) else false)) {
         if (s.function) |f| {
-            if (fnsEq(f, sub)) {
+            if (f.eq(sub)) {
                 sign = -sign;
             }
         }
         try s.nextToken();
     }
 
-    if (sign == 1) {
-        return try base(s);
-    } else {
-        var params = s.allocator.alloc(*Expr, 1) catch return EvalError.ParserOutOfMemory;
-        params[0] = try base(s);
-        return s.create_func_expr(negate, params);
-    }
+    return if (sign == 1) try base(s) else s.create_func(negate, try base(s));
 }
 
 fn factor(s: *State) !*Expr {
     var ret = try power(s);
 
-    while (s.tokenType == .Infix and if (s.function) |f| fnsEq(f, pow) else false) {
+    while (s.tokenType == .Infix and if (s.function) |f| f.eq(pow) else false) {
         std.debug.panic("not implemented");
     }
 
@@ -298,14 +380,10 @@ fn factor(s: *State) !*Expr {
 fn term(s: *State) EvalError!*Expr {
     var ret = try factor(s);
 
-    while (s.tokenType == .Infix and (if (s.function) |f| fnsEq(f, mul) or fnsEq(f, divide) or fnsEq(f, fmod) else false)) {
-        const t = s.function.?;
+    while (s.tokenType == .Infix and (if (s.function) |f| f.eq(mul) or f.eq(divide) or f.eq(fmod) else false)) {
+        const f = s.function.?.fnPtr();
         try s.nextToken();
-
-        var params = s.allocator.alloc(*Expr, 2) catch return EvalError.ParserOutOfMemory;
-        params[0] = ret;
-        params[1] = try factor(s);
-        ret = try s.create_func_expr(t, params);
+        ret = try s.create_func(f, ret, try factor(s));
     }
 
     return ret;
@@ -316,15 +394,10 @@ fn expr(s: *State) EvalError!*Expr {
 
     verbose("~~~\nret of expr is {}\ns is: {}", ret, s);
 
-    while (s.tokenType == .Infix and (if (s.function) |f| fnsEq(f, add) or fnsEq(f, sub) else false)) {
-        const t = s.function.?;
+    while (s.tokenType == .Infix and (if (s.function) |f| f.eq(add) or f.eq(sub) else false)) {
+        const f = s.function.?.fnPtr();
         try s.nextToken();
-
-        var params = s.allocator.alloc(*Expr, 2) catch return EvalError.ParserOutOfMemory;
-        params[0] = ret;
-        params[1] = try term(s);
-        ret = try s.create_func_expr(t, params);
-        verbose("RET IS {}", ret);
+        ret = try s.create_func(f, ret, try term(s));
     }
 
     return ret;
@@ -334,11 +407,7 @@ fn list(s: *State) !*Expr {
     var ret = try expr(s);
     while (s.tokenType == .Sep) {
         try s.nextToken();
-
-        var params = s.allocator.alloc(*Expr, 2) catch return EvalError.ParserOutOfMemory;
-        params[0] = ret;
-        params[1] = try expr(s);
-        ret = try s.create_func_expr(comma, params[0..]);
+        ret = try s.create_func(comma, ret, try expr(s));
     }
     return ret;
 }
@@ -369,7 +438,7 @@ pub fn interp(allocator: *std.mem.Allocator, expr_str: []const u8) !f64 {
         return error.EmptyExpression;
 
     const expression = try compile(allocator, expr_str);
-    //defer free_expr(allocator, expression);
+    defer free_expr(allocator, expression);
 
     return try eval(allocator, expression);
 }
@@ -382,7 +451,11 @@ pub fn eval(allocator: *std.mem.Allocator, expression: *const Expr) !f64 {
     };
 }
 
-fn assertInterp(allocator: *std.mem.Allocator, expr_str: []const u8, expected_result: f64) !void {
+fn assertInterp(expr_str: []const u8, expected_result: f64) !void {
+    var bytes: [1000]u8 = undefined;
+    var fba = std.heap.FixedBufferAllocator.init(bytes[0..]);
+    const allocator = &fba.allocator;
+
     const result = try interp(allocator, expr_str);
     if (result != expected_result) {
         std.debug.panic("expected {}, got {}", expected_result, result);
@@ -425,30 +498,40 @@ fn fabs(a: f64) f64 {
     return if (a < 0) -a else a;
 }
 
+test "infix operators" {
+    try assertInterp("1", 1.0);
+    try assertInterp("1+1", 2.0);
+    try assertInterp("3-3", 0.0);
+    try assertInterp("3*3", 9.0);
+    try assertInterp("3*3*3", 27.0);
+    try assertInterp("12/2", 6.0);
+    try assertInterp("5/10", 0.5);
+}
+
+test "parens" {
+    try assertInterp("1+3*4", 13.0);
+    try assertInterp("1+(3*4)", 13.0);
+    try assertInterp("(1+3)*4", 16.0);
+}
+
 const assert = std.debug.assert;
 
-test "infix operators" {
-    var bytes: [4000]u8 = undefined;
-    const allocator = &std.heap.FixedBufferAllocator.init(bytes[0..]).allocator;
+test "function call" {
+    assert(findBuiltin("foo") == null);
+    assert(findBuiltin("abs") != null);
+    assert(findBuiltin("abs").?.eqName("abs"));
 
-    try assertInterp(allocator, "1", 1.0);
-    try assertInterp(allocator, "1+1", 2.0);
-    try assertInterp(allocator, "3-3", 0.0);
-    try assertInterp(allocator, "3*3", 9.0);
-    try assertInterp(allocator, "12/2", 6.0);
+    const value: f64 = -5.0;
+    assert(findBuiltin("abs").?.call(value) == 5.0);
+
+    //try assertInterp("abs(1)", 1.0);
+    //try assertInterp("abs(-42)", 42.0);
 }
 
 test "negation" {
-    var bytes: [2000]u8 = undefined;
-    const allocator = &std.heap.FixedBufferAllocator.init(bytes[0..]).allocator;
-
-    try assertInterp(allocator, "-1", -1.0);
-    try assertInterp(allocator, "-4*5", -20.0);
-    try assertInterp(allocator, "--1", 1.0);
-    try assertInterp(allocator, "--1", 1.0);
-}
-
-test "variables" {
-    var bytes: [2000]u8 = undefined;
-    const allocator = &std.heap.FixedBufferAllocator.init(bytes[0..]).allocator;
+    try assertInterp("-1", -1.0);
+    try assertInterp("-4*5", -20.0);
+    try assertInterp("-1*-1", 1.0);
+    try assertInterp("--1", 1.0);
+    try assertInterp("--1", 1.0);
 }
