@@ -2,85 +2,7 @@ const std = @import("std");
 const warn = std.debug.warn;
 const VERBOSE = false;
 
-fn _FuncPtr(comptime arity: u8) type {
-    return switch (arity) {
-        0 => fn () f64,
-        1 => fn (a: f64) f64,
-        2 => fn (a: f64, b: f64) f64,
-        else => unreachable,
-    };
-}
-
-fn _Func(comptime arity: u8) type {
-    return struct {
-        const Self = @This();
-        pub const FP = _FuncPtr(arity);
-
-        parameters: if (arity > 0) [arity]*Expr else void,
-        function: FP,
-
-        fn initWithParameters(f: FP, paramsSlice: []*Expr) Self {
-            if (arity == 0)
-                return Self{ .function = f, .parameters = undefined };
-            const params = switch (arity) {
-                1 => [_]*Expr{paramsSlice[0]},
-                2 => [_]*Expr{ paramsSlice[0], paramsSlice[1] },
-                else => unreachable,
-            };
-            return Self{
-                .function = f,
-                .parameters = params,
-            };
-        }
-    };
-}
-
-const Func0 = _Func(0);
-const Func1 = _Func(1);
-const Func2 = _Func(2);
-
-const Func = union(enum) {
-    const Self = @This();
-
-    fn initWithParams(arity: u8, fp: var, paramsSlice: []*const Expr) Self {
-        return switch (arity) {
-            0 => Self{ .Func0 = Func0.initWithParameters(fp, paramsSlice) },
-            1 => Self{ .Func1 = Func1.initWithParameters(fp, paramsSlice) },
-            2 => Self{ .Func2 = Func2.initWithParameters(fp, paramsSlice) },
-            else => unreachable,
-        };
-    }
-
-    Func0: Func0,
-    Func1: Func1,
-    Func2: Func2,
-};
-
-const FuncPtr = union(enum) {
-    Func0: _FuncPtr(0),
-    Func1: _FuncPtr(1),
-    Func2: _FuncPtr(2),
-
-    //fn getArity(self: *const FuncPtr) u8 {
-    //return switch (self.*) {
-    //.Func0 => 0,
-    //.Func1 => 1,
-    //.Func2 => 2,
-    //};
-    //}
-
-    fn is(self: ?FuncPtr, comptime arity: u8, func: var) bool {
-        if (self) |f| {
-            return switch (f) {
-                .Func0 => |theFunction| if (@typeOf(func) == @typeOf(theFunction)) func == theFunction else false,
-                .Func1 => |theFunction| if (@typeOf(func) == @typeOf(theFunction)) func == theFunction else false,
-                .Func2 => |theFunction| if (@typeOf(func) == @typeOf(theFunction)) func == theFunction else false,
-                else => false,
-            };
-        }
-        return false;
-    }
-};
+const FnPtr = fn () f64;
 
 const EvalError = error{
     NotImplemented,
@@ -88,28 +10,42 @@ const EvalError = error{
     ParserOutOfMemory,
 };
 
-fn eval_fn(self: Func, allocator: *std.mem.Allocator) EvalError!f64 {
-    return switch (self) {
-        .Func0 => |f| f.function(),
-        .Func1 => |f| f.function(try eval(allocator, f.parameters[0])),
-        .Func2 => |f| f.function(try eval(allocator, f.parameters[0]), try eval(allocator, f.parameters[1])),
-        else => return EvalError.NotImplemented,
-    };
+fn logNoOp(comptime s: []const u8, args: ...) void {}
+fn logVerbose(comptime s: []const u8, args: ...) void {
+    std.debug.warn(s ++ "\n", args);
 }
+const verbose = if (VERBOSE) logVerbose else logNoOp;
 
-const ExprType = enum {
-    Constant,
-    Function,
+const Function = struct {
+    const Self = @This();
+
+    fptr: fn () f64,
+    params: []*Expr,
+
+    fn call(self: *const Self, allocator: *std.mem.Allocator) EvalError!f64 {
+        const f = self.fptr;
+        return switch (self.params.len) {
+            0 => self.fptr(),
+            1 => @ptrCast(fn (f64) f64, f)(try eval(allocator, self.params[0])),
+            2 => @ptrCast(fn (f64, f64) f64, f)(try eval(allocator, self.params[0]), try eval(allocator, self.params[1])),
+            3 => @ptrCast(fn (f64, f64, f64) f64, f)(try eval(allocator, self.params[0]), try eval(allocator, self.params[1]), try eval(allocator, self.params[2])),
+            else => |n| std.debug.panic("got {} params", n),
+        };
+    }
 };
 
-const Expr = union(ExprType) {
+const Expr = union(enum) {
     Constant: f64,
-    Function: Func,
-};
+    Function: Function,
 
-const FuncCall = struct {
-    name: []const u8,
-    function: FuncPtr,
+    fn initFunction(allocator: *std.mem.Allocator, fptr: var, params: []*Expr) EvalError!Expr {
+        return Expr{
+            .Function = Function{
+                .fptr = @ptrCast(FnPtr, fptr),
+                .params = params,
+            },
+        };
+    }
 };
 
 const TokenType = enum {
@@ -132,20 +68,19 @@ inline fn isLetter(ch: u8) bool {
     return ch >= 'a' and ch <= 'z';
 }
 
-const builtinFunctions = [_]FuncCall{FuncCall{ .name = "abs", .function = FuncPtr{ .Func1 = fabs } }};
+//const builtinFunctions = [_]FuncCall{FuncCall{ .name = "abs", .function = FuncPtr{ .Func1 = fabs } }};
 
-fn findBuiltin(s: *const State, name: []const u8) ?*const FuncCall {
-    if (VERBOSE) warn("finding builtin {}\n", name);
-    for (builtinFunctions) |builtin_func| {
-        if (std.mem.eql(u8, builtin_func.name, name)) {
-            if (VERBOSE) warn("  found: {}\n", builtin_func);
-            return &builtin_func;
-        }
-    }
-
-    if (VERBOSE) warn("  DID NOT FIND\n");
-    return null;
-}
+//fn findBuiltin(s: *const State, name: []const u8) ?*const FuncCall {
+//if (VERBOSE) warn("finding builtin {}\n", name);
+//for (builtinFunctions) |builtin_func| {
+//if (std.mem.eql(u8, builtin_func.name, name)) {
+//if (VERBOSE) warn("  found: {}\n", builtin_func);
+//return &builtin_func;
+//}
+//}
+//if (VERBOSE) warn("  DID NOT FIND\n");
+//return null;
+//}
 
 const State = struct {
     allocator: *std.mem.Allocator,
@@ -153,15 +88,15 @@ const State = struct {
     start: []const u8,
     next: []const u8,
     tokenType: TokenType = .Null,
+    function: ?fn () f64,
 
     value: f64 = 0,
-    function: ?FuncPtr = null,
 
-    fn create_func_expr(self: *State, func: Func) EvalError!*Expr {
+    fn create_func_expr(self: *State, fnptr: var, params: []*Expr) EvalError!*Expr {
         const e = self.allocator.create(Expr) catch |e| {
             return error.ParserOutOfMemory;
         };
-        e.* = Expr{ .Function = func };
+        e.* = try Expr.initFunction(self.allocator, fnptr, params);
         return e;
     }
 
@@ -169,11 +104,10 @@ const State = struct {
         s.tokenType = .Null;
         var debugCount: u16 = 0;
         while (true) {
-            if (VERBOSE) std.debug.warn("----\n{} nextToken loop, next is: '{}'\n", debugCount, s.next);
             debugCount += 1;
 
             if (s.next.len == 0) {
-                if (VERBOSE) warn("none left, setting end\n");
+                verbose("none left, setting end");
                 s.tokenType = .End;
                 return;
             }
@@ -185,7 +119,7 @@ const State = struct {
                 s.value = std.fmt.parseFloat(f64, s.next[0..i]) catch |err| {
                     return error.ParseFloat;
                 };
-                if (VERBOSE) warn("parsed float from '{}': {}\n", s.next[0..i], s.value);
+                verbose("parsed float from '{}': {}", s.next[0..i], s.value);
                 s.tokenType = .Number;
                 s.next = s.next[i..];
             } else {
@@ -203,14 +137,16 @@ const State = struct {
 
                     const functionName = start[0..count];
 
-                    var variable = findBuiltin(s, functionName);
-                    if (variable) |v| {
-                        s.tokenType = .Call;
-                        s.function = (variable orelse unreachable).function;
-                        if (VERBOSE) warn("parsed function {} {}", functionName, s.function);
-                    } else {
-                        s.tokenType = .Error;
-                    }
+                    std.debug.panic("todo: find builtin named {}", functionName);
+
+                    //var variable = findBuiltin(s, functionName);
+                    //if (variable) |v| {
+                    //    s.tokenType = .Call;
+                    //    s.function = (variable orelse unreachable).function;
+                    //    if (VERBOSE) warn("parsed function {} {}", functionName, s.function);
+                    //} else {
+                    //    s.tokenType = .Error;
+                    //}
                 } else {
                     // operator or special character
                     const op = s.next[0];
@@ -218,21 +154,19 @@ const State = struct {
                     switch (op) {
                         '+' => {
                             s.tokenType = .Infix;
-                            s.function = FuncPtr{ .Func2 = add };
-                            if (VERBOSE) warn("got add\n");
+                            s.function = @ptrCast(FnPtr, add);
                         },
                         '-' => {
                             s.tokenType = .Infix;
-                            s.function = FuncPtr{ .Func2 = sub };
-                            if (VERBOSE) warn("got sub\n");
+                            s.function = @ptrCast(FnPtr, sub);
                         },
                         '*' => {
                             s.tokenType = .Infix;
-                            s.function = FuncPtr{ .Func2 = mul };
+                            s.function = @ptrCast(FnPtr, mul);
                         },
                         '/' => {
                             s.tokenType = .Infix;
-                            s.function = FuncPtr{ .Func2 = divide };
+                            s.function = @ptrCast(FnPtr, divide);
                         },
                         '(' => {
                             s.tokenType = .Open;
@@ -258,19 +192,15 @@ const State = struct {
 };
 
 fn base(s: *State) EvalError!*Expr {
-    if (VERBOSE) warn("----------BASE {}", s);
-    const ret = switch (s.tokenType) {
+    switch (s.tokenType) {
         .Number => blk: {
-            const ret = s.allocator.create(Expr) catch |e| return error.ParserOutOfMemory;
+            const ret = s.allocator.create(Expr) catch return error.ParserOutOfMemory;
             ret.* = Expr{ .Constant = s.value };
-            if (VERBOSE) warn("got a constant: {}\n", s.value);
             try s.nextToken();
-            break :blk ret;
+            return ret;
         },
         .Call => blk2: {
-            const ret = s.allocator.create(Expr) catch |e| {
-                return error.ParserOutOfMemory;
-            };
+            const ret = s.allocator.create(Expr) catch return error.ParserOutOfMemory;
             //ret.* = Expr{ .Function = s.function orelse unreachable };
             try s.nextToken();
             if (s.tokenType != .Open) {
@@ -278,59 +208,40 @@ fn base(s: *State) EvalError!*Expr {
             } else {
                 try s.nextToken();
 
-                const f = s.function orelse unreachable;
-                const arity: u8 = switch (f) {
-                    .Func0 => u8(0),
-                    .Func1 => u8(1),
-                    .Func2 => u8(2),
-                    else => unreachable,
-                };
+                const f = s.function.?;
+                const arity: u8 = 0;
+                std.debug.panic("arity");
 
-                if (VERBOSE) warn("ARITY {} for {}", arity, f);
+                //if (VERBOSE) warn("ARITY {} for {}", arity, f);
 
-                var parameters = std.ArrayList(*Expr).init(s.allocator);
-                defer parameters.deinit();
+                //var parameters = std.ArrayList(*Expr).init(s.allocator);
+                //defer parameters.deinit();
 
-                var i: u8 = 0;
-                arity_loop: while (i < arity) : (i += 1) {
-                    try s.nextToken();
-                    parameters.append(try expr(s)) catch |e| {
-                        return error.ParserOutOfMemory;
-                    };
-                    if (s.tokenType != .Sep) {
-                        break :arity_loop;
-                    }
-                }
-                if (s.tokenType != .Close or i != arity - 1) {
-                    s.tokenType = .Error;
-                } else {
-                    try s.nextToken();
-                }
-
-                if (arity == 0) {
-                    switch (f) {
-                        .Func0 => |ff| {
-                            ret.* = Expr{ .Function = Func0.initWithParameters(ff, parameters.toSlice()) };
-                        },
-                        else => unreachable,
-                    }
-                } else if (arity == 1) {
-                    switch (f) {
-                        .Func1 => |ff| {
-                            ret.* = Expr{ .Function = Func1.initWithParameters(ff, parameters.toSlice()) };
-                        },
-                        else => unreachable,
-                    }
-                } else if (arity == 2) {
-                    switch (f) {
-                        .Func2 => |ff| {
-                            ret.* = Expr{ .Function = Func2.initWithParameters(ff, parameters.toSlice()) };
-                        },
-                        else => unreachable,
-                    }
-                }
+                //var i: u8 = 0;
+                //arity_loop: while (i < arity) : (i += 1) {
+                //    try s.nextToken();
+                //    parameters.append(try expr(s)) catch |e| {
+                //        return error.ParserOutOfMemory;
+                //    };
+                //    if (s.tokenType != .Sep) {
+                //        break :arity_loop;
+                //    }
+                //}
+                //if (s.tokenType != .Close or i != arity - 1) {
+                //    s.tokenType = .Error;
+                //} else {
+                //    try s.nextToken();
+                //}
+                //} else if (arity == 2) {
+                //    switch (f) {
+                //        .Func2 => |ff| {
+                //            ret.* = Expr{ .Function = Func2.initWithParameters(ff, parameters.toSlice()) };
+                //        },
+                //        else => unreachable,
+                //    }
+                //}
             }
-            break :blk2 ret;
+            return ret;
         },
         .Open => open: {
             try s.nextToken();
@@ -340,26 +251,26 @@ fn base(s: *State) EvalError!*Expr {
             } else {
                 try s.nextToken();
             }
-            break :open ret;
+            return ret;
         },
         else => {
             std.debug.panic("not implemented: {}", s.tokenType);
         },
-    };
-    return ret;
+    }
+
+    unreachable;
+}
+
+inline fn fnsEq(a: var, b: var) bool {
+    return @ptrCast(@typeOf(b), a) == b;
 }
 
 fn power(s: *State) !*Expr {
     var sign: i32 = 1;
-    while (s.tokenType == .Infix and (if (s.function) |f| (f.is(2, add) or f.is(2, sub)) else false)) {
+    while (s.tokenType == .Infix and (if (s.function) |f| fnsEq(f, add) or fnsEq(f, sub) else false)) {
         if (s.function) |f| {
-            switch (f) {
-                .Func2 => |_f| {
-                    if (_f == sub) {
-                        sign = -sign;
-                    }
-                },
-                else => {},
+            if (fnsEq(f, sub)) {
+                sign = -sign;
             }
         }
         try s.nextToken();
@@ -367,20 +278,17 @@ fn power(s: *State) !*Expr {
 
     if (sign == 1) {
         return try base(s);
+    } else {
+        var params = s.allocator.alloc(*Expr, 1) catch return EvalError.ParserOutOfMemory;
+        params[0] = try base(s);
+        return s.create_func_expr(negate, params);
     }
-
-    return s.create_func_expr(Func{
-        .Func1 = Func1{
-            .parameters = [_]*Expr{try base(s)},
-            .function = negate,
-        },
-    });
 }
 
 fn factor(s: *State) !*Expr {
     var ret = try power(s);
 
-    while (s.tokenType == .Infix and if (s.function) |f| f.is(2, pow) else false) {
+    while (s.tokenType == .Infix and if (s.function) |f| fnsEq(f, pow) else false) {
         std.debug.panic("not implemented");
     }
 
@@ -390,15 +298,14 @@ fn factor(s: *State) !*Expr {
 fn term(s: *State) EvalError!*Expr {
     var ret = try factor(s);
 
-    while (s.tokenType == .Infix and (if (s.function) |f| (f.is(2, mul) or f.is(2, divide) or f.is(2, fmod)) else false)) {
-        const t = s.function.?.Func2;
+    while (s.tokenType == .Infix and (if (s.function) |f| fnsEq(f, mul) or fnsEq(f, divide) or fnsEq(f, fmod) else false)) {
+        const t = s.function.?;
         try s.nextToken();
-        ret = try s.create_func_expr(Func{
-            .Func2 = Func2{
-                .parameters = [_]*Expr{ ret, try factor(s) },
-                .function = t,
-            },
-        });
+
+        var params = s.allocator.alloc(*Expr, 2) catch return EvalError.ParserOutOfMemory;
+        params[0] = ret;
+        params[1] = try factor(s);
+        ret = try s.create_func_expr(t, params);
     }
 
     return ret;
@@ -407,19 +314,17 @@ fn term(s: *State) EvalError!*Expr {
 fn expr(s: *State) EvalError!*Expr {
     var ret = try term(s);
 
-    if (VERBOSE) warn("~~~\nret of expr is {}\ns is: {}\n", ret, s);
+    verbose("~~~\nret of expr is {}\ns is: {}", ret, s);
 
-    while (s.tokenType == .Infix and (if (s.function) |f| (f.is(2, add) or f.is(2, sub)) else false)) {
-        if (VERBOSE) warn("got infix add or subtract\n");
-
-        const t = s.function.?.Func2;
+    while (s.tokenType == .Infix and (if (s.function) |f| fnsEq(f, add) or fnsEq(f, sub) else false)) {
+        const t = s.function.?;
         try s.nextToken();
-        ret = try s.create_func_expr(Func{
-            .Func2 = Func2{
-                .parameters = [_]*Expr{ ret, try term(s) },
-                .function = t,
-            },
-        });
+
+        var params = s.allocator.alloc(*Expr, 2) catch return EvalError.ParserOutOfMemory;
+        params[0] = ret;
+        params[1] = try term(s);
+        ret = try s.create_func_expr(t, params);
+        verbose("RET IS {}", ret);
     }
 
     return ret;
@@ -429,12 +334,11 @@ fn list(s: *State) !*Expr {
     var ret = try expr(s);
     while (s.tokenType == .Sep) {
         try s.nextToken();
-        ret = try s.create_func_expr(Func{
-            .Func2 = Func2{
-                .parameters = [_]*Expr{ ret, expr(s) },
-                .function = comma,
-            },
-        });
+
+        var params = s.allocator.alloc(*Expr, 2) catch return EvalError.ParserOutOfMemory;
+        params[0] = ret;
+        params[1] = try expr(s);
+        ret = try s.create_func_expr(comma, params[0..]);
     }
     return ret;
 }
@@ -444,11 +348,10 @@ pub fn compile(allocator: *std.mem.Allocator, expression: []const u8) !*Expr {
         .allocator = allocator,
         .start = expression,
         .next = expression,
+        .function = null,
     };
 
     try s.nextToken();
-    if (VERBOSE) warn("after nextToken in compile: {}\n", s);
-
     const root = try list(&s);
     if (s.tokenType != .End) {
         std.debug.panic("not implemented: not at the end");
@@ -458,21 +361,6 @@ pub fn compile(allocator: *std.mem.Allocator, expression: []const u8) !*Expr {
 }
 
 pub fn free_expr(allocator: *std.mem.Allocator, e: *Expr) void {
-    switch (e.*) {
-        .Function => |func| {
-            switch (func) {
-                .Func1 => |f| {
-                    free_expr(allocator, f.parameters[0]);
-                },
-                .Func2 => |f| {
-                    free_expr(allocator, f.parameters[0]);
-                    free_expr(allocator, f.parameters[1]);
-                },
-                else => {},
-            }
-        },
-        else => {},
-    }
     allocator.destroy(e);
 }
 
@@ -481,7 +369,7 @@ pub fn interp(allocator: *std.mem.Allocator, expr_str: []const u8) !f64 {
         return error.EmptyExpression;
 
     const expression = try compile(allocator, expr_str);
-    defer free_expr(allocator, expression);
+    //defer free_expr(allocator, expression);
 
     return try eval(allocator, expression);
 }
@@ -489,7 +377,7 @@ pub fn interp(allocator: *std.mem.Allocator, expr_str: []const u8) !f64 {
 pub fn eval(allocator: *std.mem.Allocator, expression: *const Expr) !f64 {
     return switch (expression.*) {
         .Constant => |val| val,
-        .Function => |func| eval_fn(func, allocator),
+        .Function => |func| func.call(allocator),
         else => return error.NotImplemented,
     };
 }
@@ -539,17 +427,8 @@ fn fabs(a: f64) f64 {
 
 const assert = std.debug.assert;
 
-test "expr" {
-    const fptr_pow = FuncPtr{ .Func2 = pow };
-    const fptr_negate = FuncPtr{ .Func1 = negate };
-    assert(fptr_pow.is(2, pow));
-    //assert(!fptr_pow.is(1, pow)); // should fail, but doesn't -- function pointer types are all the same?
-    assert(!fptr_pow.is(2, add));
-    assert(fptr_negate.is(1, negate));
-}
-
 test "infix operators" {
-    var bytes: [2000]u8 = undefined;
+    var bytes: [4000]u8 = undefined;
     const allocator = &std.heap.FixedBufferAllocator.init(bytes[0..]).allocator;
 
     try assertInterp(allocator, "1", 1.0);
@@ -566,10 +445,10 @@ test "negation" {
     try assertInterp(allocator, "-1", -1.0);
     try assertInterp(allocator, "-4*5", -20.0);
     try assertInterp(allocator, "--1", 1.0);
+    try assertInterp(allocator, "--1", 1.0);
 }
 
 test "variables" {
     var bytes: [2000]u8 = undefined;
     const allocator = &std.heap.FixedBufferAllocator.init(bytes[0..]).allocator;
-    try assertInterp(allocator, "--1", 1.0);
 }
