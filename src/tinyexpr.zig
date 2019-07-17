@@ -6,8 +6,11 @@ const FnPtr = fn () f64;
 
 const EvalError = error{
     NotImplemented,
+    FunctionNotFound,
     ParseFloat,
     ParserOutOfMemory,
+    ExpectedOpenParen,
+    InvalidFunctionArgs,
 };
 
 fn logNoOp(comptime s: []const u8, args: ...) void {}
@@ -81,11 +84,13 @@ const FuncCall = struct {
     func: Func,
 
     fn arity(self: *const Self) usize {
-        return switch (self.func) {
-            .Fn0 => 0,
-            .Fn1 => 1,
-            .Fn2 => 2,
+        var _arity: usize = switch (self.func) {
+            .Fn0 => usize(0),
+            .Fn1 => usize(1),
+            .Fn2 => usize(2),
         };
+
+        return _arity;
     }
 
     fn call(self: *const Self, params: ...) f64 {
@@ -136,14 +141,6 @@ const FuncCall = struct {
     }
 };
 
-const builtinFunctions = [_]FuncCall{
-    FuncCall.init("abs", fabs),
-    FuncCall.init("add", add),
-    FuncCall.init("sub", sub),
-    FuncCall.init("mul", mul),
-    FuncCall.init("divide", divide),
-};
-
 fn findBuiltin(name: []const u8) ?*const FuncCall {
     for (builtinFunctions) |*f| {
         if (f.eqName(name)) {
@@ -153,16 +150,6 @@ fn findBuiltin(name: []const u8) ?*const FuncCall {
 
     return null;
 }
-//if (VERBOSE) warn("finding builtin {}\n", name);
-//for (builtinFunctions) |builtin_func| {
-//if (std.mem.eql(u8, builtin_func.name, name)) {
-//if (VERBOSE) warn("  found: {}\n", builtin_func);
-//return &builtin_func;
-//}
-//}
-//if (VERBOSE) warn("  DID NOT FIND\n");
-//return null;
-//}
 
 const State = struct {
     allocator: *std.mem.Allocator,
@@ -174,6 +161,12 @@ const State = struct {
 
     value: f64 = 0,
 
+    fn createConstant(self: *State, constant: f64) EvalError!*Expr {
+        const ret = self.allocator.create(Expr) catch return error.ParserOutOfMemory;
+        ret.* = Expr{ .Constant = constant };
+        return ret;
+    }
+
     fn create_func(self: *State, fnptr: var, params: ...) EvalError!*Expr {
         const paramsArray = self.allocator.alloc(*Expr, params.len) catch return EvalError.ParserOutOfMemory;
 
@@ -183,13 +176,15 @@ const State = struct {
             paramsArray[i] = params[i];
         }
 
-        const e = self.allocator.create(Expr) catch |e| {
-            return error.ParserOutOfMemory;
-        };
+        return self.createFuncWithSlice(fnptr, paramsArray);
+    }
+
+    fn createFuncWithSlice(self: *State, fnptr: var, params: []*Expr) EvalError!*Expr {
+        const e = self.allocator.create(Expr) catch return error.ParserOutOfMemory;
         e.* = Expr{
             .Function = Function{
                 .fptr = @ptrCast(FnPtr, fnptr),
-                .params = paramsArray,
+                .params = params,
             },
         };
         return e;
@@ -237,7 +232,7 @@ const State = struct {
                         s.function = f;
                     } else {
                         warn("no builtin named {}\n", functionName);
-                        s.tokenType = .Error;
+                        return error.FunctionNotFound;
                     }
                 } else {
                     // operator or special character
@@ -286,54 +281,32 @@ const State = struct {
 fn base(s: *State) EvalError!*Expr {
     switch (s.tokenType) {
         .Number => blk: {
-            const ret = s.allocator.create(Expr) catch return error.ParserOutOfMemory;
-            ret.* = Expr{ .Constant = s.value };
+            const ret = s.createConstant(s.value);
             try s.nextToken();
             return ret;
         },
         .Call => blk2: {
-            const ret = s.allocator.create(Expr) catch return error.ParserOutOfMemory;
-            //ret.* = Expr{ .Function = s.function orelse unreachable };
             try s.nextToken();
-            if (s.tokenType != .Open) {
-                s.tokenType = .Error;
-            } else {
+            if (s.tokenType != .Open) return error.ExpectedOpenParen;
+
+            const f = s.function.?;
+            const arity = f.arity();
+
+            var parameters = std.ArrayList(*Expr).init(s.allocator);
+            defer parameters.deinit();
+
+            var i: usize = 0;
+            arity_loop: while (i < arity) : (i += 1) {
                 try s.nextToken();
-
-                const f = s.function.?;
-                const arity: u8 = 0;
-                std.debug.panic("arity");
-
-                //if (VERBOSE) warn("ARITY {} for {}", arity, f);
-
-                //var parameters = std.ArrayList(*Expr).init(s.allocator);
-                //defer parameters.deinit();
-
-                //var i: u8 = 0;
-                //arity_loop: while (i < arity) : (i += 1) {
-                //    try s.nextToken();
-                //    parameters.append(try expr(s)) catch |e| {
-                //        return error.ParserOutOfMemory;
-                //    };
-                //    if (s.tokenType != .Sep) {
-                //        break :arity_loop;
-                //    }
-                //}
-                //if (s.tokenType != .Close or i != arity - 1) {
-                //    s.tokenType = .Error;
-                //} else {
-                //    try s.nextToken();
-                //}
-                //} else if (arity == 2) {
-                //    switch (f) {
-                //        .Func2 => |ff| {
-                //            ret.* = Expr{ .Function = Func2.initWithParameters(ff, parameters.toSlice()) };
-                //        },
-                //        else => unreachable,
-                //    }
-                //}
+                parameters.append(try expr(s)) catch return error.ParserOutOfMemory;
+                if (s.tokenType != .Sep) break :arity_loop;
             }
-            return ret;
+
+            if (s.tokenType != .Close or i != arity - 1)
+                return error.InvalidFunctionArgs;
+            try s.nextToken();
+
+            return s.createFuncWithSlice(f.fnPtr(), parameters.toSlice());
         },
         .Open => open: {
             try s.nextToken();
@@ -498,6 +471,34 @@ fn fabs(a: f64) f64 {
     return if (a < 0) -a else a;
 }
 
+fn sin(a: f64) f64 {
+    return std.math.sin(a);
+}
+
+fn cos(a: f64) f64 {
+    return std.math.cos(a);
+}
+
+fn max(a: f64, b: f64) f64 {
+    return if (a > b) a else b;
+}
+
+fn min(a: f64, b: f64) f64 {
+    return if (a < b) a else b;
+}
+
+const builtinFunctions = [_]FuncCall{
+    FuncCall.init("abs", fabs),
+    FuncCall.init("add", add),
+    FuncCall.init("sub", sub),
+    FuncCall.init("mul", mul),
+    FuncCall.init("divide", divide),
+    FuncCall.init("sin", sin),
+    FuncCall.init("cos", cos),
+    FuncCall.init("max", max),
+    FuncCall.init("min", min),
+};
+
 test "infix operators" {
     try assertInterp("1", 1.0);
     try assertInterp("1+1", 2.0);
@@ -516,7 +517,7 @@ test "parens" {
 
 const assert = std.debug.assert;
 
-test "function call" {
+test "function calls" {
     assert(findBuiltin("foo") == null);
     assert(findBuiltin("abs") != null);
     assert(findBuiltin("abs").?.eqName("abs"));
@@ -524,8 +525,14 @@ test "function call" {
     const value: f64 = -5.0;
     assert(findBuiltin("abs").?.call(value) == 5.0);
 
-    //try assertInterp("abs(1)", 1.0);
-    //try assertInterp("abs(-42)", 42.0);
+    try assertInterp("abs(1)", 1.0);
+    try assertInterp("abs(-42)", 42.0);
+
+    try assertInterp("sin(1)", 0.8414709848078965);
+    try assertInterp("cos(1)", 0.5403023058681398);
+    try assertInterp("max(42, 41)", 42.0);
+    try assertInterp("max(41, 42)", 42.0);
+    try assertInterp("max(-50, 50)", 50.0);
 }
 
 test "negation" {
