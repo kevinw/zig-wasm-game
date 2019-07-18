@@ -2,6 +2,7 @@ usingnamespace @import("components.zig");
 usingnamespace @import("globals.zig");
 
 const std = @import("std");
+const warn = @import("base.zig").warn;
 const os = std.os;
 const c = @import("platform.zig");
 const bufPrint = std.fmt.bufPrint;
@@ -69,7 +70,7 @@ fn fillRectShader(s: *ShaderProgram, t: *Game, x: f32, y: f32, w: f32, h: f32) v
 
     const model = mat4x4_identity.translate(x, y, 0.0).scale(w, h, 0.0);
     s.setUniformMat4x4(s.uniformLoc("MVP"), t.projection.mult(model));
-    s.setUniformFloat(s.uniformLoc("time"), Time.time);
+    s.setUniformFloat(s.uniformLoc("time"), Time.frame_count);
 
     {
         c.glBindBuffer(c.GL_ARRAY_BUFFER, t.static_geometry.rect_2d_vertex_buffer);
@@ -189,8 +190,7 @@ pub fn nextFrame(t: *Game, elapsed: f64) void {
 
     if (t.is_paused) return;
 
-    Time.delta_time = @floatCast(f32, elapsed);
-    Time.time += Time.delta_time;
+    Time._update_next_frame(elapsed);
 
     @import("components_auto.zig").run_ALL(&t.session);
     t.debug_console.update(elapsed);
@@ -221,15 +221,16 @@ pub fn update_equation(t: *Game, eq_text: []const u8) void {
 
     var buf = std.Buffer.init(c.allocator, "") catch unreachable;
     defer buf.deinit();
-    @import("tinyglsl.zig").translate(&buf, eq_text) catch unreachable;
+    @import("tinyglsl.zig").translate(&buf, eq_text) catch |e| {
+        warn("{}", e);
+        unreachable;
+    };
 
     const glsl = buf.toSliceConst();
     c.log("translated:      {}", glsl);
 
     const slices = [_][]const u8{
-        "return (",
-        glsl,
-        ");\n}",
+        "return (", glsl, ");\n}",
     };
 
     equation_text = std.mem.concat(c.allocator, u8, slices) catch unreachable;

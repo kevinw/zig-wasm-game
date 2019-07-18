@@ -36,9 +36,18 @@ fn isPassThroughVar(address: *f64) bool {
     return false;
 }
 
+const passThroughFuncs = [_][]const u8{
+    "pow",
+    "sin",
+    "cos",
+    "tan",
+    "rand",
+    "abs",
+};
+
 fn getGLSLFuncNameForBuiltinName(name: []const u8) ![]const u8 {
-    comptime const eql = std.mem.eql;
-    if (eql(u8, "pow", name)) return "pow";
+    inline for (passThroughFuncs) |funcName|
+        if (std.mem.eql(u8, funcName, name)) return name;
 
     warn("invalid GLSL func: {}\n", name);
     return error.InvalidGLSLFunc;
@@ -106,10 +115,11 @@ fn infix(buf: *std.Buffer, f: tinyexpr.Function, op_str: []const u8) !void {
 }
 
 fn isBuiltin(f: tinyexpr.Function, name: []const u8) bool {
-    if (tinyexpr.findBuiltin(name)) |builtinFunc| {
+    if (tinyexpr.findBuiltin(name)) |builtinFunc|
         return builtinFunc.eq(f.fptr);
-    }
-    return false;
+
+    warn("isBuiltin(\"{}\") - not a valid builtin", name);
+    unreachable;
 }
 
 fn toGLSL(n: *const Expr, buf: *std.Buffer) TinyGLSLError!void {
@@ -131,7 +141,7 @@ fn toGLSL(n: *const Expr, buf: *std.Buffer) TinyGLSLError!void {
                 try infix(buf, f, "-");
             } else if (isBuiltin(f, "mul")) {
                 try infix(buf, f, "*");
-            } else if (isBuiltin(f, "div")) {
+            } else if (isBuiltin(f, "divide")) {
                 try infix(buf, f, "/");
             } else if (isBuiltin(f, "negate")) {
                 try buf.append("-");

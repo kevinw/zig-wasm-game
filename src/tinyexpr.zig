@@ -370,17 +370,24 @@ fn base(s: *State) EvalError!*Expr {
             var parameters = std.ArrayList(*Expr).init(s.allocator);
             defer parameters.deinit();
 
-            var i: usize = 0;
-            arity_loop: while (i < arity) : (i += 1) {
+            if (arity == 0) {
                 try s.nextToken();
-                parameters.append(try expr(s)) catch return error.ParserOutOfMemory;
-                if (s.tokenType != .Sep) break :arity_loop;
+                if (s.tokenType != .Close)
+                    return error.InvalidFunctionArgs;
+            } else {
+                var i: usize = 0;
+                arity_loop: while (i < arity) : (i += 1) {
+                    try s.nextToken();
+                    parameters.append(try expr(s)) catch return error.ParserOutOfMemory;
+                    if (s.tokenType != .Sep)
+                        break :arity_loop;
+                }
+
+                if (s.tokenType != .Close or i != arity - 1)
+                    return error.InvalidFunctionArgs;
             }
 
-            if (s.tokenType != .Close or i != arity - 1)
-                return error.InvalidFunctionArgs;
             try s.nextToken();
-
             return s.createFuncWithSlice(f.fnPtr(), parameters.toSlice());
         },
         .Open => {
@@ -604,6 +611,15 @@ fn min(a: f64, b: f64) f64 {
     return if (a < b) a else b;
 }
 
+fn tan(a: f64) f64 {
+    return std.math.tan(a);
+}
+
+fn rand() f64 {
+    warn("rand is not implemented\n");
+    unreachable;
+}
+
 pub const builtinFunctions = [_]FuncCall{
     FuncCall.init("abs", fabs),
     FuncCall.init("add", add),
@@ -613,10 +629,12 @@ pub const builtinFunctions = [_]FuncCall{
     FuncCall.init("negate", negate),
     FuncCall.init("sin", sin),
     FuncCall.init("cos", cos),
+    FuncCall.init("tan", tan),
     FuncCall.init("max", max),
     FuncCall.init("min", min),
     FuncCall.init("pow", pow),
     FuncCall.init("fmod", fmod),
+    FuncCall.init("rand", rand),
 };
 
 test "infix operators" {
