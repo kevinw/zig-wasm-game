@@ -11,6 +11,7 @@ const EvalError = error{
     ParserOutOfMemory,
     ExpectedOpenParen,
     InvalidFunctionArgs,
+    InvalidBuiltin,
 };
 
 fn logNoOp(comptime s: []const u8, args: ...) void {}
@@ -66,6 +67,14 @@ pub const Expr = union(enum) {
             Function => true,
             else => false,
         };
+    }
+
+    pub fn deinit(self: *Expr, allocator: *std.mem.Allocator) void {
+        switch (self.*) {
+            .Function => |*f| allocator.free(f.params),
+            else => {},
+        }
+        allocator.destroy(self);
     }
 };
 
@@ -131,6 +140,16 @@ pub const FuncCall = struct {
             .Fn1 => |f| f(args[0]),
             .Fn2 => |f| f(args[0], args[1]),
         };
+    }
+
+    fn in(self_maybe: ?*const Self, args: ...) bool {
+        if (self_maybe) |self| {
+            if (args.len == 0) return false;
+            if (self.eq(args[0]) or FuncCall.in(self_maybe, args[1..]))
+                return true;
+        } else {
+            return false;
+        }
     }
 
     fn eq(self: *const Self, function: var) bool {
@@ -251,6 +270,17 @@ const State = struct {
         return e;
     }
 
+    fn setBuiltinInfixToken(self: *State, builtinFuncName: []const u8) void {
+        self.tokenType = .Infix;
+
+        if (findBuiltin(builtinFuncName)) |f| {
+            self.function = f;
+        } else {
+            warn("error: expected to be able to find builtin named {} at compile-time\n", builtinFuncName);
+            unreachable;
+        }
+    }
+
     fn nextToken(s: *State) EvalError!void {
         s.tokenType = .Null;
         var debugCount: u16 = 0;
@@ -304,30 +334,18 @@ const State = struct {
                     const op = s.next[0];
                     s.next = s.next[1..];
                     switch (op) {
-                        '+' => {
-                            s.tokenType = .Infix;
-                            s.function = findBuiltin("add").?;
-                        },
-                        '-' => {
-                            s.tokenType = .Infix;
-                            s.function = findBuiltin("sub").?;
-                        },
-                        '*' => {
-                            s.tokenType = .Infix;
-                            s.function = findBuiltin("mul").?;
-                        },
-                        '/' => {
-                            s.tokenType = .Infix;
-                            s.function = findBuiltin("divide").?;
-                        },
-                        '^' => {
-                            s.tokenType = .Infix;
-                            s.function = findBuiltin("pow").?;
-                        },
-                        '%' => {
-                            s.tokenType = .Infix;
-                            s.function = findBuiltin("fmod");
-                        },
+                        '+' => s.setBuiltinInfixToken("add"),
+                        '-' => s.setBuiltinInfixToken("sub"),
+                        '*' => s.setBuiltinInfixToken("mul"),
+                        '/' => s.setBuiltinInfixToken("divide"),
+                        //'^' => s.setBuiltinInfixToken("pow"),
+                        '%' => s.setBuiltinInfixToken("fmod"),
+
+                        '|' => s.setBuiltinInfixToken("bitwise_or"),
+                        '&' => s.setBuiltinInfixToken("bitwise_and"),
+                        '~' => s.setBuiltinInfixToken("bitwise_not"),
+                        '^' => s.setBuiltinInfixToken("bitwise_xor"),
+
                         '(' => {
                             s.tokenType = .Open;
                         },
@@ -438,7 +456,7 @@ fn factor(s: *State) !*Expr {
             if (@ptrToInt(f.fptr) == @ptrToInt(negate)) {
                 std.debug.assert(f.params.len == 1);
                 const se = f.params[0];
-                free_expr(s.allocator, ret);
+                ret.deinit(s.allocator);
                 ret = se;
                 neg = true;
             }
@@ -484,12 +502,29 @@ fn term(s: *State) EvalError!*Expr {
     return ret;
 }
 
-fn expr(s: *State) EvalError!*Expr {
+fn expr_add_sub(s: *State) EvalError!*Expr {
     var ret = try term(s);
 
-    verbose("~~~\nret of expr is {}\ns is: {}", ret, s);
-
     while (s.tokenType == .Infix and (if (s.function) |f| f.eq(add) or f.eq(sub) else false)) {
+        const f = s.function.?.fnPtr();
+        try s.nextToken();
+        ret = try s.createFunc(f, ret, try term(s));
+    }
+
+    return ret;
+}
+
+fn isBitwiseOp(function: ?*const FuncCall) bool {
+    return if (function) |f|
+        f.eq(bitwise_xor) or f.eq(bitwise_and) or f.eq(bitwise_or)
+    else
+        false;
+}
+
+fn expr(s: *State) EvalError!*Expr {
+    var ret = try expr_add_sub(s);
+
+    while (s.tokenType == .Infix and isBitwiseOp(s.function)) {
         const f = s.function.?.fnPtr();
         try s.nextToken();
         ret = try s.createFunc(f, ret, try term(s));
@@ -520,16 +555,12 @@ pub fn compile(allocator: *std.mem.Allocator, expression: []const u8, variables:
     return root;
 }
 
-pub fn free_expr(allocator: *std.mem.Allocator, e: *Expr) void {
-    allocator.destroy(e);
-}
-
 pub fn interp(allocator: *std.mem.Allocator, expr_str: []const u8, variables: []const Variable) !f64 {
     if (expr_str.len == 0)
         return error.EmptyExpression;
 
     const expression = try compile(allocator, expr_str, variables);
-    defer free_expr(allocator, expression);
+    defer expression.deinit(allocator);
 
     return try eval(allocator, expression);
 }
@@ -554,9 +585,40 @@ fn assertInterpVars(expr_str: []const u8, expected_result: f64, variables: []con
 
     const result = try interp(allocator, expr_str, variables);
     if (result != expected_result) {
-        warn("expected {}, got {}\n", expected_result, result);
-        @panic("does not match");
+        warn("\nexpected {}, got {}\n", expected_result, result);
+        warn("expression was: {}\n", expr_str);
+        @panic("interpreted result does not match the expected string");
     }
+}
+
+const REINTERP = false;
+
+fn bitwise_xor(a: f64, b: f64) f64 {
+    return if (REINTERP)
+        @ptrCast(f64, @ptrCast(u64, a) ^ @ptrCast(u64, b))
+    else
+        @intToFloat(f64, @floatToInt(i64, a) ^ @floatToInt(i64, b));
+}
+
+fn bitwise_or(a: f64, b: f64) f64 {
+    return if (REINTERP)
+        @ptrCast(f64, @ptrCast(u64, a) | @ptrCast(u64, b))
+    else
+        @intToFloat(f64, @floatToInt(i64, a) | @floatToInt(i64, b));
+}
+
+fn bitwise_and(a: f64, b: f64) f64 {
+    return if (REINTERP)
+        @ptrCast(f64, @ptrCast(u64, a) & @ptrCast(u64, b))
+    else
+        @intToFloat(f64, @floatToInt(i64, a) & @floatToInt(i64, b));
+}
+
+fn bitwise_not(a: f64) f64 {
+    return if (REINTERP)
+        @ptrCast(f64, ~@ptrCast(u64, a))
+    else
+        @intToFloat(f64, ~@floatToInt(i64, a));
 }
 
 fn fmod(a: f64, b: f64) f64 {
@@ -635,6 +697,11 @@ pub const builtinFunctions = [_]FuncCall{
     FuncCall.init("pow", pow),
     FuncCall.init("fmod", fmod),
     FuncCall.init("rand", rand),
+
+    FuncCall.init("bitwise_xor", bitwise_xor),
+    FuncCall.init("bitwise_and", bitwise_and),
+    FuncCall.init("bitwise_or", bitwise_or),
+    FuncCall.init("bitwise_not", bitwise_not),
 };
 
 test "infix operators" {
@@ -645,7 +712,8 @@ test "infix operators" {
     try assertInterp("3*3*3", 27.0);
     try assertInterp("12/2", 6.0);
     try assertInterp("5/10", 0.5);
-    try assertInterp("3^2", 9);
+    try assertInterp("3^2", 1.0);
+    try assertInterp("44^1", 45.0);
 }
 
 test "parens" {

@@ -122,6 +122,20 @@ fn isBuiltin(f: tinyexpr.Function, name: []const u8) bool {
     unreachable;
 }
 
+const infixOperators = blk: {
+    const P = [2][]const u8;
+
+    break :blk [_]P{
+        P{ "add", "+" },
+        P{ "sub", "-" },
+        P{ "mul", "*" },
+        P{ "divide", "/" },
+        P{ "bitwise_xor", "^" },
+        P{ "bitwise_and", "&" },
+        P{ "bitwise_or", "|" },
+    };
+};
+
 fn toGLSL(n: *const Expr, buf: *std.Buffer) TinyGLSLError!void {
     switch (n.*) {
         .Constant => |value| {
@@ -135,26 +149,25 @@ fn toGLSL(n: *const Expr, buf: *std.Buffer) TinyGLSLError!void {
             }
         },
         .Function => |f| {
-            if (isBuiltin(f, "add")) {
-                try infix(buf, f, "+");
-            } else if (isBuiltin(f, "sub")) {
-                try infix(buf, f, "-");
-            } else if (isBuiltin(f, "mul")) {
-                try infix(buf, f, "*");
-            } else if (isBuiltin(f, "divide")) {
-                try infix(buf, f, "/");
-            } else if (isBuiltin(f, "negate")) {
-                try buf.append("-");
-                try toGLSL(f.params[0], buf);
-            } else {
-                try buf.append(try getGLSLFuncName(f));
-                try buf.append("(");
-                for (f.params) |p, i| {
-                    try toGLSL(p, buf);
-                    if (i != f.params.len - 1)
-                        try buf.append(", ");
+            inline for (infixOperators) |*opPair| {
+                if (isBuiltin(f, opPair[0])) {
+                    try infix(buf, f, opPair[1]);
+                    break;
                 }
-                try buf.append(")");
+            } else {
+                if (isBuiltin(f, "negate")) {
+                    try buf.append("-");
+                    try toGLSL(f.params[0], buf);
+                } else {
+                    try buf.append(try getGLSLFuncName(f));
+                    try buf.append("(");
+                    for (f.params) |p, i| {
+                        try toGLSL(p, buf);
+                        if (i != f.params.len - 1)
+                            try buf.append(", ");
+                    }
+                    try buf.append(")");
+                }
             }
         },
     }
@@ -172,7 +185,8 @@ fn assertGLSL(tinyexpr_str: []const u8, expected_glsl: []const u8) !void {
     try translate(&buf, tinyexpr_str);
 
     const actual = buf.toSliceConst();
-    //warn("\n\nactual  : {}\nexpected: {}\n", actual, expected_glsl);
+    if (!std.mem.eql(u8, expected_glsl, buf.toSliceConst()))
+        warn("\n\nactual  : {}\nexpected: {}\n", actual, expected_glsl);
     std.testing.expectEqualSlices(u8, expected_glsl, buf.toSliceConst());
 }
 
@@ -190,8 +204,10 @@ test "ints to floats" {
 }
 
 test "infix to function" {
-    try assertGLSL("2^3", "pow(2.0, 3.0)");
-    try assertGLSL("x^y", "pow(x, y)");
+    //try assertGLSL("2^3", "pow(2.0, 3.0)");
+    //try assertGLSL("x^y", "pow(x, y)");
+    try assertGLSL("2^3", "2.0 ^ 3.0");
+    try assertGLSL("x^y", "x ^ y");
 }
 
 test "infix parens" {
