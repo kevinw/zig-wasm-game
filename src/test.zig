@@ -1,3 +1,4 @@
 comptime {
-    _ = @import("systems/player.zig");
+    _ = @import("tinyglsl.zig");
+    _ = @import("tinyexpr.zig");
 }

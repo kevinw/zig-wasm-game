@@ -5,7 +5,7 @@ const builtin = @import("builtin");
 usingnamespace @import("globals.zig");
 const fetch = @import("fetch.zig");
 
-// until std has better wasm panic
+// Until std has better WASM panic
 pub fn panic(msg: []const u8, error_return_trace: ?*builtin.StackTrace) noreturn {
     while (true) {
         @breakpoint();

@@ -16,6 +16,8 @@ pub fn log(comptime fmt: []const u8, args: ...) void {
     wasm.consoleLogS(s.ptr, s.len);
 }
 
+pub const warn = log;
+
 pub fn panic(message: []const u8, error_return_trace: ?*builtin.StackTrace) noreturn {
     @setCold(true);
     wasm.consoleLogS(message.ptr, message.len);

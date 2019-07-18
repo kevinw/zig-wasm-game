@@ -1,5 +1,5 @@
 const std = @import("std");
-const warn = @import("root").warn;
+pub const warn = @import("base.zig").warn;
 const VERBOSE = false;
 
 const FnPtr = fn () f64;
@@ -547,7 +547,8 @@ fn assertInterpVars(expr_str: []const u8, expected_result: f64, variables: []con
 
     const result = try interp(allocator, expr_str, variables);
     if (result != expected_result) {
-        @panic("expected {}, got {}", expected_result, result);
+        warn("expected {}, got {}\n", expected_result, result);
+        @panic("does not match");
     }
 }
 

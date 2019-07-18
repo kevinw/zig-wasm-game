@@ -1,7 +1,7 @@
 /// Translates a compiled tinyexpr Expr into valid GLSL code.
 const std = @import("std");
-const warn = @import("root").warn;
 const builtin = @import("builtin");
+pub const warn = @import("base.zig").warn;
 const tinyexpr = @import("tinyexpr.zig");
 const Expr = tinyexpr.Expr;
 const Variable = tinyexpr.Variable;
@@ -162,7 +162,7 @@ fn assertGLSL(tinyexpr_str: []const u8, expected_glsl: []const u8) !void {
     try translate(&buf, tinyexpr_str);
 
     const actual = buf.toSliceConst();
-    //std.debug.warn("\n\nactual  : {}\nexpected: {}\n", actual, expected_glsl);
+    //warn("\n\nactual  : {}\nexpected: {}\n", actual, expected_glsl);
     std.testing.expectEqualSlices(u8, expected_glsl, buf.toSliceConst());
 }
 
