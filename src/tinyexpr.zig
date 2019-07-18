@@ -223,7 +223,7 @@ const State = struct {
         return ret;
     }
 
-    fn create_func(self: *State, fnptr: var, params: ...) EvalError!*Expr {
+    fn createFunc(self: *State, fnptr: var, params: ...) EvalError!*Expr {
         // TODO: how to more accurately check for a function pointer argument?
         const name = @typeName(@typeOf(fnptr));
         if (name.len < 3 or name[0] != 'f' or name[1] != 'n' or name[2] != '(')
@@ -424,7 +424,7 @@ fn power(s: *State) !*Expr {
         try s.nextToken();
     }
 
-    return if (sign == 1) try base(s) else s.create_func(negate, try base(s));
+    return if (sign == 1) try base(s) else s.createFunc(negate, try base(s));
 }
 
 fn factor(s: *State) !*Expr {
@@ -453,20 +453,20 @@ fn factor(s: *State) !*Expr {
         if (insertion_maybe) |insertion| {
             switch (insertion.*) {
                 .Function => |insertion_f| {
-                    var insert = try s.create_func(t, insertion_f.params[1], try power(s));
+                    var insert = try s.createFunc(t, insertion_f.params[1], try power(s));
                     insertion_f.params[1] = insert;
                     insertion_maybe = insert;
                 },
                 else => unreachable,
             }
         } else {
-            ret = try s.create_func(t, ret, try power(s));
+            ret = try s.createFunc(t, ret, try power(s));
             insertion_maybe = ret;
         }
     }
 
     if (neg) {
-        ret = try s.create_func(negate, ret);
+        ret = try s.createFunc(negate, ret);
     }
 
     return ret;
@@ -478,7 +478,7 @@ fn term(s: *State) EvalError!*Expr {
     while (s.tokenType == .Infix and (if (s.function) |f| f.eq(mul) or f.eq(divide) or f.eq(fmod) else false)) {
         const f = s.function.?.fnPtr();
         try s.nextToken();
-        ret = try s.create_func(f, ret, try factor(s));
+        ret = try s.createFunc(f, ret, try factor(s));
     }
 
     return ret;
@@ -492,7 +492,7 @@ fn expr(s: *State) EvalError!*Expr {
     while (s.tokenType == .Infix and (if (s.function) |f| f.eq(add) or f.eq(sub) else false)) {
         const f = s.function.?.fnPtr();
         try s.nextToken();
-        ret = try s.create_func(f, ret, try term(s));
+        ret = try s.createFunc(f, ret, try term(s));
     }
 
     return ret;
@@ -502,7 +502,7 @@ fn list(s: *State) !*Expr {
     var ret = try expr(s);
     while (s.tokenType == .Sep) {
         try s.nextToken();
-        ret = try s.create_func(comma, ret, try expr(s));
+        ret = try s.createFunc(comma, ret, try expr(s));
     }
     return ret;
 }
