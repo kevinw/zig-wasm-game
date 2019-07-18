@@ -8,6 +8,8 @@ const EvalError = error{
     NotImplemented,
     IdentifierNotFound,
     ParseFloat,
+    ParseError,
+    EmptyExpression,
     ParserOutOfMemory,
     ExpectedOpenParen,
     InvalidFunctionArgs,
@@ -443,8 +445,8 @@ fn base(s: *State) EvalError!*Expr {
             return ret;
         },
         else => {
-            warn("not implemented: tokenType {}\n", s.tokenType);
-            unreachable;
+            //warn("not implemented: tokenType {}\n", s.tokenType);
+            return error.ParseError;
         },
     }
 
@@ -606,23 +608,6 @@ pub fn eval(allocator: *std.mem.Allocator, expression: *const Expr) !f64 {
     };
 }
 
-fn assertInterp(expr_str: []const u8, expected_result: f64) !void {
-    return assertInterpVars(expr_str, expected_result, [_]Variable{});
-}
-
-fn assertInterpVars(expr_str: []const u8, expected_result: f64, variables: []const Variable) !void {
-    var bytes: [1000]u8 = undefined;
-    var fba = std.heap.FixedBufferAllocator.init(bytes[0..]);
-    const allocator = &fba.allocator;
-
-    const result = try interp(allocator, expr_str, variables);
-    if (result != expected_result) {
-        warn("\nexpected {}, got {}\n", expected_result, result);
-        warn("expression was: {}\n", expr_str);
-        @panic("interpreted result does not match the expected string");
-    }
-}
-
 const REINTERP = false;
 
 fn bitwise_xor(a: f64, b: f64) f64 {
@@ -736,6 +721,27 @@ pub const builtinFunctions = [_]FuncCall{
     FuncCall.init("bitwise_not", bitwise_not),
 };
 
+fn assertInterp(expr_str: []const u8, expected_result: f64) !void {
+    return assertInterpVars(expr_str, expected_result, [_]Variable{});
+}
+
+fn _testInterp(expr_str: []const u8, variables: []const Variable) EvalError!f64 {
+    var bytes: [1000]u8 = undefined;
+    var fba = std.heap.FixedBufferAllocator.init(bytes[0..]);
+    const allocator = &fba.allocator;
+    const result = try interp(allocator, expr_str, variables);
+    return result;
+}
+
+fn assertInterpVars(expr_str: []const u8, expected_result: f64, variables: []const Variable) !void {
+    const result = try _testInterp(expr_str, variables);
+    if (result != expected_result) {
+        warn("\nexpected {}, got {}\n", expected_result, result);
+        warn("expression was: {}\n", expr_str);
+        @panic("interpreted result does not match the expected string");
+    }
+}
+
 test "infix operators" {
     try assertInterp("1", 1.0);
     try assertInterp("1+1", 2.0);
@@ -775,6 +781,7 @@ test "function calls" {
 
 test "infix function application" {
     try assertInterp("abs $ -1", 1.0);
+    std.testing.expectError(EvalError.ParseError, _testInterp("$ -1", [_]Variable{}));
 }
 
 test "negation" {
@@ -785,11 +792,9 @@ test "negation" {
     try assertInterp("--1", 1.0);
 }
 
-var PI: f64 = std.math.pi;
-
-const testVars = [_]Variable{Variable{ .name = "PI", .address = &PI }};
-
 test "variables" {
+    var PI: f64 = std.math.pi;
+    const testVars = [_]Variable{Variable{ .name = "PI", .address = &PI }};
     try assertInterpVars("PI", 3.141592653589793, testVars[0..]);
 
     var x: f64 = 0;
