@@ -609,6 +609,7 @@ pub const builtinFunctions = [_]FuncCall{
     FuncCall.init("sub", sub),
     FuncCall.init("mul", mul),
     FuncCall.init("divide", divide),
+    FuncCall.init("negate", negate),
     FuncCall.init("sin", sin),
     FuncCall.init("cos", cos),
     FuncCall.init("max", max),
