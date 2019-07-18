@@ -1,5 +1,6 @@
 /// Translates a compiled tinyexpr Expr into valid GLSL code.
 const std = @import("std");
+const warn = @import("root").warn;
 const builtin = @import("builtin");
 const tinyexpr = @import("tinyexpr.zig");
 const Expr = tinyexpr.Expr;
@@ -39,7 +40,7 @@ fn getGLSLFuncNameForBuiltinName(name: []const u8) ![]const u8 {
     comptime const eql = std.mem.eql;
     if (eql(u8, "pow", name)) return "pow";
 
-    std.debug.warn("invalid GLSL func: {}\n", name);
+    warn("invalid GLSL func: {}\n", name);
     return error.InvalidGLSLFunc;
 }
 
@@ -50,7 +51,7 @@ fn getGLSLFuncName(f: tinyexpr.Function) ![]const u8 {
         }
     }
 
-    std.debug.warn("invalid GLSL func: {}\n", f);
+    warn("invalid GLSL func: {}\n", f);
     return error.InvalidGLSLFunc;
 }
 
@@ -149,10 +150,16 @@ fn toGLSL(n: *const Expr, buf: *std.Buffer) TinyGLSLError!void {
     }
 }
 
+pub fn translate(buf: *std.Buffer, tiny: []const u8) !void {
+    const expr = try tinyexpr.compile(buf.list.allocator, tiny, test_vars);
+    try toGLSL(expr, buf);
+}
+
 fn assertGLSL(tinyexpr_str: []const u8, expected_glsl: []const u8) !void {
     var buf = try std.Buffer.init(test_allocator, "");
-    const expr = try tinyexpr.compile(test_allocator, tinyexpr_str, test_vars);
-    try toGLSL(expr, &buf);
+    defer buf.deinit();
+
+    try translate(&buf, tinyexpr_str);
 
     const actual = buf.toSliceConst();
     //std.debug.warn("\n\nactual  : {}\nexpected: {}\n", actual, expected_glsl);

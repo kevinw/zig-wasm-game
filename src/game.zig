@@ -18,10 +18,9 @@ const gbe = @import("gbe");
 const prefabs = @import("prefabs.zig");
 const GameSession = @import("session.zig").GameSession;
 const ShaderProgram = @import("all_shaders.zig").ShaderProgram;
+const tinyexpr = @import("tinyexpr.zig");
 
 const WHITE = vec4(1, 1, 1, 1);
-const WINDOW_WIDTH = 800;
-const WINDOW_HEIGHT = 450;
 
 pub var game_state: Game = undefined;
 
@@ -52,9 +51,6 @@ pub const Game = struct {
     }
 };
 
-const PI = 3.14159265358979;
-const max_particle_count = 500;
-const max_falling_block_count = grid_width * grid_height;
 const margin_size = 10;
 const grid_width = 10;
 const grid_height = 20;
@@ -63,43 +59,8 @@ const board_width = grid_width * cell_size;
 const board_height = grid_height * cell_size;
 const board_left = margin_size;
 const board_top = margin_size;
-
-const next_piece_width = margin_size + 4 * cell_size + margin_size;
-const next_piece_height = next_piece_width;
-const next_piece_left = board_left + board_width + margin_size;
-const next_piece_top = board_top + board_height - next_piece_height;
-
-const score_width = next_piece_width;
-const score_height = next_piece_height;
-const score_left = next_piece_left;
-const score_top = next_piece_top - margin_size - score_height;
-
-const level_display_width = next_piece_width;
-const level_display_height = next_piece_height;
-const level_display_left = next_piece_left;
-const level_display_top = score_top - margin_size - level_display_height;
-
-const hold_piece_width = next_piece_width;
-const hold_piece_height = next_piece_height;
-const hold_piece_left = next_piece_left;
-const hold_piece_top = level_display_top - margin_size - hold_piece_height;
-
-pub const window_width = next_piece_left + next_piece_width + margin_size;
-pub const window_height = board_top + board_height + margin_size;
-
-const board_color = Vec4{ .data = [_]f32{ 72.0 / 255.0, 72.0 / 255.0, 72.0 / 255.0, 1.0 } };
-
-const init_piece_delay = 0.5;
-const min_piece_delay = 0.05;
-const level_delay_increment = 0.05;
-
 pub const font_char_width = 18;
 pub const font_char_height = 32;
-
-const gravity = 0.14;
-const time_per_level = 60.0;
-
-const AUDIO_BUFFER_SIZE = 2048;
 
 const a: f32 = 0.1;
 
@@ -167,7 +128,9 @@ pub fn draw(t: *Game) void {
     } else if (t.is_paused) {
         drawCenteredText(t, "PAUSED", 1.0, WHITE);
     } else {
-        fillRectShader(&t.test_shader, t, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
+        const w = @intToFloat(f32, t.framebuffer_width);
+        const h = @intToFloat(f32, t.framebuffer_height);
+        fillRectShader(&t.test_shader, t, 0, 0, w, h);
         //drawCenteredText(t, "play", 4.0, vec4(1, 1, 1, 0.5));
         const color = vec4(1, 1, 1, 1);
 
@@ -247,12 +210,25 @@ pub fn didImageLoad() void {
     tetris_state.is_loading = false;
 }
 
-var equation_text: []const u8 = "return x * y;\n}";
+var equation_text: []const u8 = "return fract(pow(x, y/time))*400.0;\n}";
+
+comptime {
+    _ = @import("tinyexpr.zig");
+}
 
 pub fn update_equation(t: *Game, eq_text: []const u8) void {
+    c.log("update equation: {}", eq_text);
+
+    var buf = std.Buffer.init(c.allocator, "") catch unreachable;
+    defer buf.deinit();
+    @import("tinyglsl.zig").translate(&buf, eq_text) catch unreachable;
+
+    const glsl = buf.toSliceConst();
+    c.log("translated:      {}", glsl);
+
     const slices = [_][]const u8{
         "return (",
-        eq_text[0..eq_text.len],
+        glsl,
         ");\n}",
     };
 
@@ -265,20 +241,9 @@ pub fn restartGame(t: *Game) void {
     t.is_paused = false;
     t.debug_console.reset();
 
-    const vert =
-        \\#version 300 es
-        \\precision mediump float;
-        \\in vec3 VertexPosition;
-        \\in vec2 TexCoord;
-        \\out vec2 FragTexCoord;
-        \\uniform mat4 MVP;
-        \\void main(void) {
-        \\    FragTexCoord = TexCoord;
-        \\    gl_Position = vec4(VertexPosition, 1.0) * MVP;
-        \\}
-    ;
-
-    const fragTemplate = @embedFile("../assets/mojulo_frag.glsl");
+    const ASSETS = "../assets/";
+    const vert = @embedFile(ASSETS ++ "mojulo_vert.glsl");
+    const fragTemplate = @embedFile(ASSETS ++ "mojulo_frag.glsl");
     //const frag = std.fmt.allocPrint(c.allocator, fragTemplate) catch unreachable;
     //pub fn concat(allocator: *Allocator, comptime T: type, slices: []const []const T) ![]T {
 

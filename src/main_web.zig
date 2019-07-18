@@ -16,6 +16,8 @@ pub fn _log(comptime fmt: []const u8, args: ...) void {
     c.log(fmt, args);
 }
 
+pub const warn = _log;
+
 pub const c = @import("platform.zig");
 
 const game = @import("game.zig");
@@ -114,7 +116,7 @@ export fn onFetch(width: c_uint, height: c_uint, bytes_ptr: c_uint, bytes_len: c
     });
 }
 
-export fn onInit() void {
+export fn onInit(width: c_uint, height: c_uint) void {
     const t = GameState();
     t.framebuffer_width = 800;
     t.framebuffer_height = 450;

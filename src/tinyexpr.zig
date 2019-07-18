@@ -1,5 +1,5 @@
 const std = @import("std");
-const warn = std.debug.warn;
+const warn = @import("root").warn;
 const VERBOSE = false;
 
 const FnPtr = fn () f64;
@@ -15,7 +15,7 @@ const EvalError = error{
 
 fn logNoOp(comptime s: []const u8, args: ...) void {}
 fn logVerbose(comptime s: []const u8, args: ...) void {
-    std.debug.warn(s ++ "\n", args);
+    @import("root").warn(s ++ "\n", args);
 }
 const verbose = if (VERBOSE) logVerbose else logNoOp;
 
@@ -399,7 +399,7 @@ fn base(s: *State) EvalError!*Expr {
             return ret;
         },
         else => {
-            std.debug.panic("not implemented: {}", s.tokenType);
+            @panic("not implemented: tokenType unknown");
         },
     }
 
@@ -547,7 +547,7 @@ fn assertInterpVars(expr_str: []const u8, expected_result: f64, variables: []con
 
     const result = try interp(allocator, expr_str, variables);
     if (result != expected_result) {
-        std.debug.panic("expected {}, got {}", expected_result, result);
+        @panic("expected {}, got {}", expected_result, result);
     }
 }
 
@@ -635,9 +635,8 @@ test "parens" {
     try assertInterp("(1+3)*4", 16.0);
 }
 
-const assert = std.debug.assert;
-
 test "function calls" {
+    const assert = std.debug.assert;
     assert(findBuiltin("foo") == null);
     assert(findBuiltin("abs") != null);
     assert(findBuiltin("abs").?.eqName("abs"));
