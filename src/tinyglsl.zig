@@ -90,28 +90,42 @@ fn needsParens(f: *Expr) bool {
     };
 }
 
-fn infix(buf: *std.Buffer, f: tinyexpr.Function, op_str: []const u8) !void {
-    if (needsParens(f.params[0])) {
+const intCast = "int";
+
+fn infix(buf: *std.Buffer, f: tinyexpr.Function, op_str: []const u8, needsInt_s: []const u8) !void {
+    // TODO: this function is getting ridiculous.
+    // instead of doing this stuff when filling the buffer, instead create a
+    // transformation that runs on the Expr tree before we stringify it
+    var needsInt = std.mem.eql(u8, needsInt_s, "true");
+
+    if (needsInt) try buf.append("float(");
+
+    if (needsInt or needsParens(f.params[0])) {
+        if (needsInt)
+            try buf.append(intCast);
         try buf.append("(");
     }
     try toGLSL(f.params[0], buf);
-    if (needsParens(f.params[0])) {
+    if (needsInt or needsParens(f.params[0])) {
         try buf.append(") ");
     } else {
         try buf.append(" ");
     }
 
     try buf.append(op_str);
+    try buf.append(" ");
 
-    if (needsParens(f.params[1])) {
-        try buf.append(" (");
-    } else {
-        try buf.append(" ");
+    if (needsInt or needsParens(f.params[1])) {
+        if (needsInt)
+            try buf.append(intCast);
+        try buf.append("(");
     }
     try toGLSL(f.params[1], buf);
-    if (needsParens(f.params[1])) {
+    if (needsInt or needsParens(f.params[1])) {
         try buf.append(")");
     }
+
+    if (needsInt) try buf.append(")");
 }
 
 fn isBuiltin(f: tinyexpr.Function, name: []const u8) bool {
@@ -123,16 +137,17 @@ fn isBuiltin(f: tinyexpr.Function, name: []const u8) bool {
 }
 
 const infixOperators = blk: {
-    const P = [2][]const u8;
+    const P = [3][]const u8;
 
     break :blk [_]P{
-        P{ "add", "+" },
-        P{ "sub", "-" },
-        P{ "mul", "*" },
-        P{ "divide", "/" },
-        P{ "bitwise_xor", "^" },
-        P{ "bitwise_and", "&" },
-        P{ "bitwise_or", "|" },
+        P{ "add", "+", "false" },
+        P{ "sub", "-", "false" },
+        P{ "mul", "*", "false" },
+        P{ "divide", "/", "false" },
+
+        P{ "bitwise_xor", "^", "true" },
+        P{ "bitwise_and", "&", "true" },
+        P{ "bitwise_or", "|", "true" },
     };
 };
 
@@ -151,7 +166,7 @@ fn toGLSL(n: *const Expr, buf: *std.Buffer) TinyGLSLError!void {
         .Function => |f| {
             inline for (infixOperators) |*opPair| {
                 if (isBuiltin(f, opPair[0])) {
-                    try infix(buf, f, opPair[1]);
+                    try infix(buf, f, opPair[1], opPair[2]);
                     break;
                 }
             } else {
@@ -206,8 +221,8 @@ test "ints to floats" {
 test "infix to function" {
     //try assertGLSL("2^3", "pow(2.0, 3.0)");
     //try assertGLSL("x^y", "pow(x, y)");
-    try assertGLSL("2^3", "2.0 ^ 3.0");
-    try assertGLSL("x^y", "x ^ y");
+    try assertGLSL("2^3", "float(int(2.0) ^ int(3.0))");
+    try assertGLSL("x^y", "float(int(x) ^ int(y))");
 }
 
 test "infix parens" {

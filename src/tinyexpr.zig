@@ -83,6 +83,7 @@ const TokenType = enum {
     End,
     Number,
     Infix,
+    InfixFunctionApply,
     Open,
     Close,
     Sep,
@@ -270,25 +271,70 @@ const State = struct {
         return e;
     }
 
-    fn setBuiltinInfixToken(self: *State, builtinFuncName: []const u8) void {
-        self.tokenType = .Infix;
-
-        if (findBuiltin(builtinFuncName)) |f| {
-            self.function = f;
-        } else {
-            warn("error: expected to be able to find builtin named {} at compile-time\n", builtinFuncName);
-            unreachable;
+    fn setBuiltinInfixToken(self: *State, builtinFuncName: []const u8, peek: bool) TokenType {
+        if (!peek) {
+            if (findBuiltin(builtinFuncName)) |f| {
+                self.function = f;
+            } else {
+                warn("error: expected to be able to find builtin named {} at compile-time\n", builtinFuncName);
+                unreachable;
+            }
         }
+
+        return .Infix;
+    }
+
+    fn nextOperator(s: *State, op: u8, peek: bool) TokenType {
+        return switch (op) {
+            '+' => s.setBuiltinInfixToken("add", peek),
+            '-' => s.setBuiltinInfixToken("sub", peek),
+            '*' => s.setBuiltinInfixToken("mul", peek),
+            '/' => s.setBuiltinInfixToken("divide", peek),
+            '%' => s.setBuiltinInfixToken("fmod", peek),
+            //'^' => s.setBuiltinInfixToken("pow", peek),
+
+            '|' => s.setBuiltinInfixToken("bitwise_or", peek),
+            '&' => s.setBuiltinInfixToken("bitwise_and", peek),
+            '~' => s.setBuiltinInfixToken("bitwise_not", peek),
+            '^' => s.setBuiltinInfixToken("bitwise_xor", peek),
+
+            '$' => .InfixFunctionApply,
+
+            '(' => .Open,
+            ')' => .Close,
+            ',' => .Sep,
+
+            ' ', '\t', '\n', '\r' => .Null,
+
+            else => else_blk: {
+                warn("invalid next char: {}\n", op);
+                break :else_blk .Error;
+            },
+        };
+    }
+
+    fn peekNextToken(s: *State) TokenType {
+        var next = s.next;
+
+        if (next.len == 0) return .End;
+
+        if (isDigit(next[0])) return .Number;
+
+        if (isLetter(next[0])) return .Call; // or .Variable...
+
+        var tokenType: TokenType = .Null;
+        while (next.len > 0 and tokenType == .Null) {
+            tokenType = s.nextOperator(next[0], true);
+            next = next[1..];
+        }
+
+        return tokenType;
     }
 
     fn nextToken(s: *State) EvalError!void {
         s.tokenType = .Null;
-        var debugCount: u16 = 0;
         while (true) {
-            debugCount += 1;
-
             if (s.next.len == 0) {
-                verbose("none left, setting end");
                 s.tokenType = .End;
                 return;
             }
@@ -332,35 +378,8 @@ const State = struct {
                 } else {
                     // operator or special character
                     const op = s.next[0];
+                    s.tokenType = s.nextOperator(op, false);
                     s.next = s.next[1..];
-                    switch (op) {
-                        '+' => s.setBuiltinInfixToken("add"),
-                        '-' => s.setBuiltinInfixToken("sub"),
-                        '*' => s.setBuiltinInfixToken("mul"),
-                        '/' => s.setBuiltinInfixToken("divide"),
-                        //'^' => s.setBuiltinInfixToken("pow"),
-                        '%' => s.setBuiltinInfixToken("fmod"),
-
-                        '|' => s.setBuiltinInfixToken("bitwise_or"),
-                        '&' => s.setBuiltinInfixToken("bitwise_and"),
-                        '~' => s.setBuiltinInfixToken("bitwise_not"),
-                        '^' => s.setBuiltinInfixToken("bitwise_xor"),
-
-                        '(' => {
-                            s.tokenType = .Open;
-                        },
-                        ')' => {
-                            s.tokenType = .Close;
-                        },
-                        ',' => {
-                            s.tokenType = .Sep;
-                        },
-                        ' ', '\t', '\n', '\r' => {},
-                        else => {
-                            warn("invalid next char: {}\n", op);
-                            s.tokenType = .Error;
-                        },
-                    }
                 }
             }
 
@@ -424,7 +443,8 @@ fn base(s: *State) EvalError!*Expr {
             return ret;
         },
         else => {
-            @panic("not implemented: tokenType unknown");
+            warn("not implemented: tokenType {}\n", s.tokenType);
+            unreachable;
         },
     }
 
@@ -522,6 +542,18 @@ fn isBitwiseOp(function: ?*const FuncCall) bool {
 }
 
 fn expr(s: *State) EvalError!*Expr {
+    if (s.tokenType == .Call and s.peekNextToken() == .InfixFunctionApply) {
+        // abs $ -1 becomes abs(-1)
+        const f = s.function.?.fnPtr();
+
+        try s.nextToken();
+        if (s.tokenType != .InfixFunctionApply)
+            @panic("expected .InfixFunctionApply");
+        try s.nextToken();
+
+        return try s.createFunc(f, try list(s));
+    }
+
     var ret = try expr_add_sub(s);
 
     while (s.tokenType == .Infix and isBitwiseOp(s.function)) {
@@ -739,6 +771,10 @@ test "function calls" {
     try assertInterp("max(42, 41)", 42.0);
     try assertInterp("max(41, 42)", 42.0);
     try assertInterp("max(-50, 50)", 50.0);
+}
+
+test "infix function application" {
+    try assertInterp("abs $ -1", 1.0);
 }
 
 test "negation" {
