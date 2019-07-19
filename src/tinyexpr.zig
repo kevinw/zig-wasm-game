@@ -13,6 +13,8 @@ const EvalError = error{
     EmptyExpression,
     ExpectedOpenParen,
     InvalidFunctionArgs,
+    HexNumberTooLong,
+    InvalidCharacter,
     WrongNumberOfFunctionArgs,
     InvalidBuiltin,
 };
@@ -341,6 +343,42 @@ const State = struct {
         return @intCast(u16, count);
     }
 
+    fn isHexDigit(byte: u8) bool {
+        return (byte >= '0' and byte <= '9') or
+            (byte >= 'a' and byte <= 'f') or
+            (byte >= 'A' and byte <= 'F');
+    }
+
+    /// Convert a hex string to a 32bit number (max 8 hex digits)
+    fn hexToInt(_hex: []const u8) !u32 {
+        // thanks https://stackoverflow.com/questions/10156409/convert-hex-string-char-to-int/39052987#39052987
+        var hex = _hex;
+        if (hex.len > 8) {
+            log("error trying to parse hex '{}'", hex);
+            return error.HexNumberTooLong;
+        }
+
+        var val: u32 = 0;
+        while (hex.len > 0) {
+            var byte = hex[0];
+            hex = hex[1..];
+
+            if (byte >= '0' and byte <= '9') {
+                byte = byte - '0';
+            } else if (byte >= 'a' and byte <= 'f') {
+                byte = byte - 'a' + 10;
+            } else if (byte >= 'A' and byte <= 'F') {
+                byte = byte - 'A' + 10;
+            } else {
+                return error.InvalidCharacter;
+            }
+
+            val = (val << 4) | (byte & 0xF);
+        }
+
+        return val;
+    }
+
     fn nextToken(s: *State) EvalError!void {
         s.tokenType = .Null;
         while (true) {
@@ -351,14 +389,25 @@ const State = struct {
 
             // Try reading a number.
             if (isDigit(s.next[0])) {
-                var i: usize = 0;
-                while (i < s.next.len and isDigit(s.next[i])) : (i += 1) {}
-                s.value = std.fmt.parseFloat(f64, s.next[0..i]) catch |err| {
-                    return error.ParseFloat;
-                };
-                verbose("parsed float from '{}': {}", s.next[0..i], s.value);
-                s.tokenType = .Number;
-                s.next = s.next[i..];
+                if (s.next.len > 2 and s.next[0] == '0' and s.next[1] == 'x') {
+                    // hex digit
+                    s.next = s.next[2..];
+
+                    var i: usize = 0;
+                    while (i < s.next.len and isHexDigit(s.next[i])) : (i += 1) {}
+                    const hexString = s.next[0..i];
+                    s.value = @intToFloat(f64, try hexToInt(hexString));
+                    s.tokenType = .Number;
+                    s.next = s.next[i..];
+                } else {
+                    // base 10
+                    var i: usize = 0;
+                    while (i < s.next.len and isDigit(s.next[i])) : (i += 1) {}
+                    s.value = std.fmt.parseFloat(f64, s.next[0..i]) catch return error.ParseFloat;
+                    verbose("parsed float from '{}': {}", s.next[0..i], s.value);
+                    s.tokenType = .Number;
+                    s.next = s.next[i..];
+                }
             } else {
                 // Look for a variable or builtin function call.
                 if (isLetter(s.next[0])) {
@@ -780,6 +829,7 @@ test "infix operators" {
     try assertInterp("((1^2)+3)", 6);
     try assertInterp("12 % 5", 2);
     try assertInterp("12 % 4.5", 3);
+    try assertInterp("abs(1)&0x1", 1);
 }
 
 test "parens" {
@@ -818,6 +868,13 @@ test "negation" {
     try assertInterp("-1*-1", 1.0);
     try assertInterp("--1", 1.0);
     try assertInterp("--1", 1.0);
+}
+
+test "number literals" {
+    try assertInterp("1", 1.0);
+    try assertInterp("0x1", 1.0);
+    try assertInterp("0x1", 1.0);
+    try assertInterp("0x00ff00", 65280.0);
 }
 
 test "variables" {

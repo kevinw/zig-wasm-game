@@ -33,4 +33,6 @@ void main(void) {
 float equation() {
     float x = FragTexCoord.x * 100.0;
     float y = FragTexCoord.y * 100.0;
+    float A = atan(y, x);
+    float r = sqrt(x * x + y * y);
 
