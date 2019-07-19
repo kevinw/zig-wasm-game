@@ -159,6 +159,9 @@ const infixOperators = blk: {
         P{ "bitwise_xor", "^", "true" },
         P{ "bitwise_and", "&", "true" },
         P{ "bitwise_or", "|", "true" },
+
+        P{ "shift_left", "<<", "true" },
+        P{ "shift_right", ">>", "true" },
     };
 };
 

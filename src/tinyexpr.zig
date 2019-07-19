@@ -278,7 +278,7 @@ const State = struct {
         return e;
     }
 
-    fn setBuiltinInfixToken(self: *State, builtinFuncName: []const u8, peek: bool) TokenType {
+    fn setBuiltinInfixToken(self: *State, builtinFuncName: []const u8, peek: bool, num_chars: u8) NextOp {
         if (!peek) {
             if (findBuiltin(builtinFuncName)) |f| {
                 self.function = f;
@@ -288,34 +288,51 @@ const State = struct {
             }
         }
 
-        return .Infix;
+        return NextOp.init(.Infix, num_chars);
     }
 
-    fn nextOperator(s: *State, op: u8, peek: bool) TokenType {
+    const NextOp = struct {
+        token_type: TokenType,
+        num_chars: u8 = 1,
+
+        fn init(token_type: TokenType, num_chars: u8) NextOp {
+            return NextOp{
+                .token_type = token_type,
+                .num_chars = num_chars,
+            };
+        }
+    };
+
+    fn nextOperator(s: *State, op: u8, peek: bool) NextOp {
         return switch (op) {
-            '+' => s.setBuiltinInfixToken("add", peek),
-            '-' => s.setBuiltinInfixToken("sub", peek),
-            '*' => s.setBuiltinInfixToken("mul", peek),
-            '/' => s.setBuiltinInfixToken("divide", peek),
-            '%' => s.setBuiltinInfixToken("fmod", peek),
-            //'^' => s.setBuiltinInfixToken("pow", peek),
+            '+' => s.setBuiltinInfixToken("add", peek, 1),
+            '-' => s.setBuiltinInfixToken("sub", peek, 1),
+            '*' => s.setBuiltinInfixToken("mul", peek, 1),
+            '/' => s.setBuiltinInfixToken("divide", peek, 1),
+            '%' => s.setBuiltinInfixToken("fmod", peek, 1),
+            //'^' => s.setBuiltinInfixToken("pow", peek, 1),
 
-            '|' => s.setBuiltinInfixToken("bitwise_or", peek),
-            '&' => s.setBuiltinInfixToken("bitwise_and", peek),
-            '~' => s.setBuiltinInfixToken("bitwise_not", peek),
-            '^' => s.setBuiltinInfixToken("bitwise_xor", peek),
+            '|' => s.setBuiltinInfixToken("bitwise_or", peek, 1),
+            '&' => s.setBuiltinInfixToken("bitwise_and", peek, 1),
+            '~' => s.setBuiltinInfixToken("bitwise_not", peek, 1),
+            '^' => s.setBuiltinInfixToken("bitwise_xor", peek, 1),
 
-            '$' => .InfixFunctionApply,
+            '$' => NextOp.init(.InfixFunctionApply, 1),
 
-            '(' => .Open,
-            ')' => .Close,
-            ',' => .Sep,
+            '<' => if (s.next.len > 1 and s.next[1] == '<')
+                s.setBuiltinInfixToken("shift_left", peek, 2)
+            else
+                NextOp.init(.Error, 1),
 
-            ' ', '\t', '\n', '\r' => .Null,
+            '(' => NextOp.init(.Open, 1),
+            ')' => NextOp.init(.Close, 1),
+            ',' => NextOp.init(.Sep, 1),
+
+            ' ', '\t', '\n', '\r' => NextOp.init(.Null, 1),
 
             else => else_blk: {
-                warn("invalid next char: {}\n", op);
-                break :else_blk .Error;
+                warn("invalid next char: {c}\n", op);
+                break :else_blk NextOp.init(.Error, 1);
             },
         };
     }
@@ -331,8 +348,9 @@ const State = struct {
 
         var tokenType: TokenType = .Null;
         while (next.len > 0 and tokenType == .Null) {
-            tokenType = s.nextOperator(next[0], true);
-            next = next[1..];
+            const next_op = s.nextOperator(next[0], true);
+            tokenType = next_op.token_type;
+            next = next[next_op.num_chars..];
         }
 
         return tokenType;
@@ -437,8 +455,10 @@ const State = struct {
                 } else {
                     // operator or special character
                     const op = s.next[0];
-                    s.tokenType = s.nextOperator(op, false);
-                    s.next = s.next[1..];
+
+                    const next_op = s.nextOperator(op, false);
+                    s.tokenType = next_op.token_type;
+                    s.next = s.next[next_op.num_chars..];
                 }
             }
 
@@ -601,9 +621,28 @@ fn expr_add_sub(s: *State) EvalError!*Expr {
     return ret;
 }
 
+fn exprBitwise(s: *State) EvalError!*Expr {
+    var ret = try expr_add_sub(s);
+
+    while (s.tokenType == .Infix and isBitwiseOp(s.function)) {
+        const f = s.function.?.fnPtr();
+        try s.nextToken();
+        ret = try s.createFunc(f, ret, try expr(s));
+    }
+
+    return ret;
+}
+
 fn isBitwiseOp(function: ?*const FuncCall) bool {
     return if (function) |f|
         f.eq(bitwise_xor) or f.eq(bitwise_and) or f.eq(bitwise_or)
+    else
+        false;
+}
+
+fn isShiftOp(function: ?*const FuncCall) bool {
+    return if (function) |f|
+        f.eq(shift_left) or f.eq(shift_right)
     else
         false;
 }
@@ -621,9 +660,9 @@ fn expr(s: *State) EvalError!*Expr {
         return try s.createFunc(f, try list(s));
     }
 
-    var ret = try expr_add_sub(s);
+    var ret = try exprBitwise(s);
 
-    while (s.tokenType == .Infix and isBitwiseOp(s.function)) {
+    while (s.tokenType == .Infix and isShiftOp(s.function)) {
         const f = s.function.?.fnPtr();
         try s.nextToken();
         ret = try s.createFunc(f, ret, try expr(s));
@@ -682,6 +721,14 @@ pub fn eval(allocator: *std.mem.Allocator, expression: *const Expr) !f64 {
 }
 
 const REINTERP = false;
+
+fn shift_left(a: f64, amount: f64) f64 {
+    return @intToFloat(f64, @floatToInt(u64, a) << @floatToInt(u6, a));
+}
+
+fn shift_right(a: f64, amount: f64) f64 {
+    return @intToFloat(f64, @floatToInt(u64, a) >> @floatToInt(u6, a));
+}
 
 fn bitwise_xor(a: f64, b: f64) f64 {
     return if (REINTERP)
@@ -792,6 +839,9 @@ pub const builtinFunctions = [_]FuncCall{
     FuncCall.init("bitwise_and", bitwise_and),
     FuncCall.init("bitwise_or", bitwise_or),
     FuncCall.init("bitwise_not", bitwise_not),
+
+    FuncCall.init("shift_left", shift_left),
+    FuncCall.init("shift_right", shift_right),
 };
 
 fn assertInterp(expr_str: []const u8, expected_result: f64) !void {
@@ -830,6 +880,7 @@ test "infix operators" {
     try assertInterp("12 % 5", 2);
     try assertInterp("12 % 4.5", 3);
     try assertInterp("abs(1)&0x1", 1);
+    try assertInterp("1<<1", 2);
 }
 
 test "parens" {
