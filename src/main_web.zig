@@ -34,9 +34,10 @@ pub inline fn GameState() *game.Game {
 }
 
 export fn onEquation(eq_ptr: c_uint, eq_len: c_uint) void {
-    var slice = @intToPtr([*]u8, eq_ptr)[0..eq_len];
-    defer c.allocator.free(slice);
-    game.update_equation(GameState(), slice);
+    var equation_str = @intToPtr([*]u8, eq_ptr)[0..eq_len];
+    defer c.allocator.free(equation_str);
+
+    game.update_equation(GameState(), equation_str);
 }
 
 export fn onKeyDown(keyCode: c_int, state: u8, repeat: c_int) void {

@@ -14,7 +14,7 @@
       <div class="col">
         <div class="wrapper">
           <canvas id="canvasgl" width="400" height="400" style="width: 800px; height: 800px;"></canvas>
-            <input id="equation-input" type="text" value="fract(pow(x, y/time))*400.0" />
+            <input id="equation-input" type="text" value="" />
         </div>
         WASD to move, IJKL to shoot
       </div>
@@ -41,25 +41,29 @@
           memory = instance.exports.memory;
           exports = instance.exports;
 
-          instance.exports.onInit($webgl.width, $webgl.height);
+          exports.onInit($webgl.width, $webgl.height);
 
-          document.addEventListener('keydown', e => instance.exports.onKeyDown(e.keyCode, 1, e.repeat));
-          document.addEventListener('keyup', e => instance.exports.onKeyUp(e.keyCode, 0));
-          document.addEventListener('mousedown', e => instance.exports.onMouseDown(e.button, e.x, e.y));
-          document.addEventListener('mouseup', e => instance.exports.onMouseUp(e.button, e.x, e.y));
-          document.addEventListener('mousemove', e => instance.exports.onMouseMove(e.x, e.y));
-          document.addEventListener('resize', e => instance.exports.onResize(e.width, e.height));
+          document.addEventListener('keydown', e => exports.onKeyDown(e.keyCode, 1, e.repeat));
+          document.addEventListener('keyup', e => exports.onKeyUp(e.keyCode, 0));
+          document.addEventListener('mousedown', e => exports.onMouseDown(e.button, e.x, e.y));
+          document.addEventListener('mouseup', e => exports.onMouseUp(e.button, e.x, e.y));
+          document.addEventListener('mousemove', e => exports.onMouseMove(e.x, e.y));
+          document.addEventListener('resize', e => exports.onResize(e.width, e.height));
+
+            const sendEq = () => {
+              var res = copyBytesToWASM(eqInp.value);
+              if (!res.success) {
+                  console.error("error copying bytes to wasm");
+                  return;
+              }
+
+              instance.exports.onEquation(res.ptr, res.len);
+            };
 
           const eqInp = document.getElementById("equation-input");
           eqInp.addEventListener("keyup", function(e) {
-              if (event.key === "Enter") {
-                  var res = copyBytesToWASM(eqInp.value);
-                  if (res.success) {
-                      instance.exports.onEquation(res.ptr, res.len);
-                  } else {
-                      console.error("error copying bytes to wasm");
-                  }
-              }
+              if (event.key === "Enter")
+                  sendEq();
           });
 
           const onAnimationFrame = instance.exports.onAnimationFrame;
@@ -69,6 +73,11 @@
           }
 
           window.requestAnimationFrame(step);
+
+            const startEquation = "10  + 165 * sin(2.5+ (y-50) / 26 ) + 90*sin( time*0.7 - ((0.1*( x - 50 )^2 + (y-50)^2 )^0.45) ) - 255 * (1 + (((x-1) % 50) - (x % 50))) * (1 + (( (y+30-(time%18)-1) % 10) - ( (y+30-(time%18)) % 10))) * ((y%50) + (50-y)%50)";
+            eqInp.value = startEquation;
+            sendEq();
+
         });
     }
 

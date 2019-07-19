@@ -2,6 +2,12 @@
     box-sizing: border-box;
 }
 
+#equation-input {
+    width: 100%;
+    font-size: 15px;
+    font-family: Consolas, Monaco, Courier New;
+}
+
 canvas {
     image-rendering: optimizeSpeed;             /* Older versions of FF          */
     image-rendering: -moz-crisp-edges;          /* FF 6.0+                       */

@@ -51,6 +51,13 @@ function sendOnFetch(width, height, bytes, token) {
     }
 }
 
+const fromJSON = (ptr, len) => JSON.parse(readCharStr(ptr, len));
+
+const onEquationResultJSON = (ptr, len) => {
+    var obj = fromJSON(ptr, len);
+    console.log("onEquationResult", obj);
+};
+
 const fetchBytes = (ptr, len, token) => {
     var url = readCharStr(ptr, len);
     if (url.endsWith(".png")) {
@@ -85,9 +92,9 @@ var wasm = {
     consoleLog,
     getRandomSeed,
     getRandomString,
-    consoleLogF: consoleLog,
     consoleLogS,
     readCharStr,
     debugBreak,
     fetchBytes,
+    onEquationResultJSON
 }

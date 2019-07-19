@@ -223,7 +223,10 @@ pub fn update_equation(t: *Game, eq_text: []const u8) void {
     defer buf.deinit();
     @import("tinyglsl.zig").translate(&buf, eq_text) catch |e| {
         warn("{}", e);
-        unreachable;
+        const s = std.fmt.allocPrint(c.allocator, "{{\"error\": true, \"reason\": \"{}\"}}", e) catch unreachable;
+        defer c.allocator.free(s);
+        c.onEquationResultJSON(s.ptr, s.len);
+        return;
     };
 
     const glsl = buf.toSliceConst();

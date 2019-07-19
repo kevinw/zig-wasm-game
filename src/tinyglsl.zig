@@ -45,9 +45,20 @@ const passThroughFuncs = [_][]const u8{
     "abs",
 };
 
+const funcRenames = blk: {
+    const P = [2][]const u8;
+
+    break :blk [_]P{P{ "fmod", "mod" }};
+};
+
 fn getGLSLFuncNameForBuiltinName(name: []const u8) ![]const u8 {
     inline for (passThroughFuncs) |funcName|
-        if (std.mem.eql(u8, funcName, name)) return name;
+        if (std.mem.eql(u8, funcName, name))
+            return name;
+
+    inline for (funcRenames) |*rename|
+        if (std.mem.eql(u8, rename[0], name))
+            return rename[1];
 
     warn("invalid GLSL func: {}\n", name);
     return error.InvalidGLSLFunc;
@@ -167,23 +178,24 @@ fn toGLSL(n: *const Expr, buf: *std.Buffer) TinyGLSLError!void {
             inline for (infixOperators) |*opPair| {
                 if (isBuiltin(f, opPair[0])) {
                     try infix(buf, f, opPair[1], opPair[2]);
-                    break;
-                }
-            } else {
-                if (isBuiltin(f, "negate")) {
-                    try buf.append("-");
-                    try toGLSL(f.params[0], buf);
-                } else {
-                    try buf.append(try getGLSLFuncName(f));
-                    try buf.append("(");
-                    for (f.params) |p, i| {
-                        try toGLSL(p, buf);
-                        if (i != f.params.len - 1)
-                            try buf.append(", ");
-                    }
-                    try buf.append(")");
+                    return;
                 }
             }
+
+            if (isBuiltin(f, "negate")) {
+                try buf.append("-");
+                try toGLSL(f.params[0], buf);
+                return;
+            }
+
+            try buf.append(try getGLSLFuncName(f));
+            try buf.append("(");
+            for (f.params) |p, i| {
+                try toGLSL(p, buf);
+                if (i != f.params.len - 1)
+                    try buf.append(", ");
+            }
+            try buf.append(")");
         },
     }
 }
@@ -233,4 +245,8 @@ test "infix parens" {
 test "pass through vars" {
     try assertGLSL("time", "time");
     try assertGLSL("x*y*time", "(x * y) * time");
+}
+
+test "function renames" {
+    try assertGLSL("x%y", "mod(x, y)");
 }

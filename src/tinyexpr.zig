@@ -7,19 +7,22 @@ const FnPtr = fn () f64;
 const EvalError = error{
     NotImplemented,
     IdentifierNotFound,
+    OutOfMemory,
     ParseFloat,
     ParseError,
     EmptyExpression,
-    ParserOutOfMemory,
     ExpectedOpenParen,
     InvalidFunctionArgs,
+    WrongNumberOfFunctionArgs,
     InvalidBuiltin,
 };
 
-fn logNoOp(comptime s: []const u8, args: ...) void {}
-fn logVerbose(comptime s: []const u8, args: ...) void {
-    @import("root").warn(s ++ "\n", args);
+fn log(comptime s: []const u8, args: ...) void {
+    warn(s ++ "\n", args);
 }
+
+fn logNoOp(comptime s: []const u8, args: ...) void {}
+const logVerbose = log;
 const verbose = if (VERBOSE) logVerbose else logNoOp;
 
 /// a wrapper for a function pointer bound to be called later with a set of
@@ -234,13 +237,13 @@ const State = struct {
     }
 
     fn createVariable(self: *State, variable: Variable) EvalError!*Expr {
-        const ret = self.allocator.create(Expr) catch return error.ParserOutOfMemory;
+        const ret = try self.allocator.create(Expr);
         ret.* = Expr{ .Variable = variable };
         return ret;
     }
 
     fn createConstant(self: *State, constant: f64) EvalError!*Expr {
-        const ret = self.allocator.create(Expr) catch return error.ParserOutOfMemory;
+        const ret = try self.allocator.create(Expr);
         ret.* = Expr{ .Constant = constant };
         return ret;
     }
@@ -251,7 +254,7 @@ const State = struct {
         if (name.len < 3 or name[0] != 'f' or name[1] != 'n' or name[2] != '(')
             @compileError("expected a function pointer, got '" ++ name ++ "'");
 
-        const paramsArray = self.allocator.alloc(*Expr, params.len) catch return EvalError.ParserOutOfMemory;
+        const paramsArray = try self.allocator.alloc(*Expr, params.len);
 
         comptime var i = 0;
         comptime const len = params.len;
@@ -263,7 +266,7 @@ const State = struct {
     }
 
     fn createFuncWithSlice(self: *State, fnptr: var, params: []*Expr) EvalError!*Expr {
-        const e = self.allocator.create(Expr) catch return error.ParserOutOfMemory;
+        const e = try self.allocator.create(Expr);
         e.* = Expr{
             .Function = Function{
                 .fptr = @ptrCast(FnPtr, fnptr),
@@ -331,6 +334,11 @@ const State = struct {
         }
 
         return tokenType;
+    }
+
+    fn currentCharIndex(s: *State) u16 {
+        const count = @ptrToInt(s.next.ptr) - @ptrToInt(s.start.ptr);
+        return @intCast(u16, count);
     }
 
     fn nextToken(s: *State) EvalError!void {
@@ -411,19 +419,27 @@ fn base(s: *State) EvalError!*Expr {
 
             if (arity == 0) {
                 try s.nextToken();
-                if (s.tokenType != .Close)
+                if (s.tokenType != .Close) {
+                    log("expected a closing paren for arity-0 function {}", f);
                     return error.InvalidFunctionArgs;
+                }
             } else {
                 var i: usize = 0;
                 arity_loop: while (i < arity) : (i += 1) {
                     try s.nextToken();
-                    parameters.append(try expr(s)) catch return error.ParserOutOfMemory;
+                    try parameters.append(try expr(s));
                     if (s.tokenType != .Sep)
                         break :arity_loop;
                 }
 
-                if (s.tokenType != .Close or i != arity - 1)
+                if (s.tokenType != .Close) {
+                    log("expected a closing paren for function {}", f);
                     return error.InvalidFunctionArgs;
+                }
+                if (i != arity - 1) {
+                    log("got {} params for function {} with arity {}", i, f, arity);
+                    return error.WrongNumberOfFunctionArgs;
+                }
             }
 
             try s.nextToken();
@@ -561,7 +577,7 @@ fn expr(s: *State) EvalError!*Expr {
     while (s.tokenType == .Infix and isBitwiseOp(s.function)) {
         const f = s.function.?.fnPtr();
         try s.nextToken();
-        ret = try s.createFunc(f, ret, try term(s));
+        ret = try s.createFunc(f, ret, try expr(s));
     }
 
     return ret;
@@ -580,7 +596,15 @@ pub fn compile(allocator: *std.mem.Allocator, expression: []const u8, variables:
     var s = State.init(allocator, expression, variables);
 
     try s.nextToken();
-    const root = try list(&s);
+    const root = list(&s) catch |e| {
+        var spaces_buf = try std.Buffer.init(s.allocator, "");
+        defer spaces_buf.deinit();
+        var i: u16 = 0;
+        while (i < s.currentCharIndex()) : (i += 1) try spaces_buf.append(" ");
+
+        log("{}\n{}^", expression, spaces_buf.toSlice());
+        return e;
+    };
     if (s.tokenType != .End) {
         warn("not implemented: not at the end, s.tokenType is {}\n", s.tokenType);
         unreachable;
@@ -752,6 +776,10 @@ test "infix operators" {
     try assertInterp("5/10", 0.5);
     try assertInterp("3^2", 1.0);
     try assertInterp("44^1", 45.0);
+    try assertInterp("abs(1^2+3)", 4);
+    try assertInterp("((1^2)+3)", 6);
+    try assertInterp("12 % 5", 2);
+    try assertInterp("12 % 4.5", 3);
 }
 
 test "parens" {
