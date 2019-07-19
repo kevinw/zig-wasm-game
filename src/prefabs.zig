@@ -26,7 +26,18 @@ pub const Bullet = struct {
 
         try gs.addComponent(entity_id, c.Sprite{ .pos = pos, .spritesheet = &game_state.bullet_sprite });
         try gs.addComponent(entity_id, c.Mover{ .vel = vel });
-        try gs.addComponent(entity_id, c.Destroy_Timer{ .secs_left = 0.5 });
+        try gs.addComponent(entity_id, c.Destroy_Timer{ .secs_left = 1.5 });
+
+        return entity_id;
+    }
+};
+
+pub const Mojulo = struct {
+    pub fn spawn(gs: *GameSession, pos: Vec3) !gbe.EntityId {
+        const entity_id = gs.spawn();
+        errdefer gs.undoSpawn(entity_id);
+
+        try gs.addComponent(entity_id, c.Sprite{ .pos = pos });
 
         return entity_id;
     }

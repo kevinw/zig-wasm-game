@@ -1,5 +1,5 @@
 const builtin = @import("builtin");
-const bufPrint = @import("std").fmt.bufPrint;
+const std = @import("std");
 
 pub const is_web = builtin.arch == builtin.Arch.wasm32;
 pub usingnamespace if (is_web) @import("platform/web.zig") else @import("platform/c.zig");
@@ -9,6 +9,7 @@ pub extern fn playAudio(_: [*c]f32, _: c_uint) void;
 
 pub fn abortReason(comptime format: []const u8, args: ...) noreturn {
     var panic_buf: [255]u8 = undefined;
-    const panic_text = bufPrint(panic_buf[0..], format, args) catch unreachable;
+    const panic_text = std.fmt.bufPrint(panic_buf[0..], format, args) catch unreachable;
+    log("{}", panic_text);
     @panic(panic_text);
 }

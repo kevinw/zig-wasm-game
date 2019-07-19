@@ -3,6 +3,7 @@ const assert = std.debug.assert;
 const os = std.os;
 pub const allocator = std.heap.c_allocator;
 pub const panic = std.debug.panic;
+pub const warn = std.debug.warn;
 
 const c = @import("platform.zig");
 const game = @import("game.zig");

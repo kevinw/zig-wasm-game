@@ -100,6 +100,16 @@ pub const ShaderProgram = struct {
         c.glUseProgram(sp.program_id);
     }
 
+    pub fn attribLoc(sp: ShaderProgram, comptime name: []const u8) c.GLint {
+        const name_cstr = name ++ "\x00";
+        return sp.attribLocation(name_cstr);
+    }
+
+    pub fn uniformLoc(sp: ShaderProgram, comptime name: []const u8) c.GLint {
+        const name_cstr = name ++ "\x00";
+        return sp.uniformLocation(name_cstr);
+    }
+
     pub fn attribLocation(sp: ShaderProgram, name: []const u8) c.GLint {
         const id = if (c.is_web)
             c.glGetAttribLocation(sp.program_id, name.ptr, name.len - 1)
@@ -112,13 +122,17 @@ pub const ShaderProgram = struct {
     }
 
     pub fn uniformLocation(sp: ShaderProgram, name: []const u8) c.GLint {
+        if (c.is_web and name[name.len - 1] != 0) c.log("warning: last byte should be null: {}", name);
+
         const id = if (c.is_web)
             c.glGetUniformLocation(sp.program_id, name.ptr, name.len - 1)
         else
             c.glGetUniformLocation(sp.program_id, name.ptr);
+
         if (id == -1) {
             c.abortReason("invalid uniform: {}\n", name);
         }
+
         return id;
     }
 
@@ -128,6 +142,10 @@ pub const ShaderProgram = struct {
 
     pub fn setUniformFloat(sp: ShaderProgram, uniform_id: c.GLint, value: f32) void {
         c.glUniform1f(uniform_id, value);
+    }
+
+    pub fn setUniformFloatByName(sp: ShaderProgram, name: []const u8, value: f32) void {
+        sp.setUniformFloat(sp.uniformLoc(name));
     }
 
     pub fn setUniformVec3(sp: ShaderProgram, uniform_id: c.GLint, value: math3d.Vec3) void {
@@ -146,8 +164,22 @@ pub const ShaderProgram = struct {
         }
     }
 
+    pub fn setUniformVec4ByName(sp: ShaderProgram, name: []const u8, value: Vec4) void {
+        const location = sp.uniformLocation(name ++ "\x00");
+        if (location != -1) {
+            sp.setUniformVec4(location, value);
+        }
+    }
+
     pub fn setUniformMat4x4(sp: ShaderProgram, uniform_id: c.GLint, value: Mat4x4) void {
         c.glUniformMatrix4fv(uniform_id, 1, c.GL_FALSE, value.data[0][0..].ptr);
+    }
+
+    pub fn setUniformMat4x4ByName(sp: ShaderProgram, name: []const u8, value: Mat4x4) void {
+        const location = sp.uniformLocation(name ++ "\x00");
+        if (location != -1) {
+            c.glUniformMatrix4fv(location, 1, c.GL_FALSE, value.data[0][0..].ptr);
+        }
     }
 
     pub fn create(
@@ -159,6 +191,9 @@ pub const ShaderProgram = struct {
         sp.vertex_id = c.initShader(vertex_source, "vertex\x00", c.GL_VERTEX_SHADER);
         sp.fragment_id = c.initShader(frag_source, "fragment\x00", c.GL_FRAGMENT_SHADER);
         sp.program_id = c.linkShaderProgram(sp.vertex_id, sp.fragment_id, null);
+        if (maybe_geometry_source) |geo_source| {
+            unreachable;
+        }
         debug_gl.assertNoError();
         return sp;
     }

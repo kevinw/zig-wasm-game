@@ -4,7 +4,7 @@ const GameSession = @import("../session.zig").GameSession;
 const Sprite = @import("sprite.zig").Sprite;
 const Gun = @import("gun.zig").Gun;
 
-pub const Player = struct { // !component
+pub const Player = struct {
     speed: f32 = 500,
 };
 

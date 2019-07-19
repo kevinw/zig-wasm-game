@@ -5,7 +5,7 @@ const builtin = @import("builtin");
 usingnamespace @import("globals.zig");
 const fetch = @import("fetch.zig");
 
-// until std has better wasm panic
+// Until std has better WASM panic
 pub fn panic(msg: []const u8, error_return_trace: ?*builtin.StackTrace) noreturn {
     while (true) {
         @breakpoint();
@@ -15,6 +15,8 @@ pub fn panic(msg: []const u8, error_return_trace: ?*builtin.StackTrace) noreturn
 pub fn _log(comptime fmt: []const u8, args: ...) void {
     c.log(fmt, args);
 }
+
+pub const warn = _log;
 
 pub const c = @import("platform.zig");
 
@@ -31,8 +33,16 @@ pub inline fn GameState() *game.Game {
     return &game.game_state;
 }
 
-export fn onKeyDown(keyCode: c_int, state: u8) void {
+export fn onEquation(eq_ptr: c_uint, eq_len: c_uint) void {
+    var equation_str = @intToPtr([*]u8, eq_ptr)[0..eq_len];
+    defer c.allocator.free(equation_str);
+
+    game.update_equation(GameState(), equation_str);
+}
+
+export fn onKeyDown(keyCode: c_int, state: u8, repeat: c_int) void {
     //if (state == 0) return;
+    if (repeat > 0) return;
     const t = GameState();
     switch (keyCode) {
         c.KEY_ESCAPE, c.KEY_P => game.userTogglePause(t),
@@ -91,8 +101,7 @@ export fn onFetch(width: c_uint, height: c_uint, bytes_ptr: c_uint, bytes_len: c
         return;
     }
 
-    var rawSlice = @intToPtr([*]u8, bytes_ptr);
-    var slice = rawSlice[0..bytes_len];
+    var slice = @intToPtr([*]u8, bytes_ptr)[0..bytes_len];
     defer c.allocator.free(slice);
 
     const pitch = bytes_len / height;
@@ -100,20 +109,15 @@ export fn onFetch(width: c_uint, height: c_uint, bytes_ptr: c_uint, bytes_len: c
     var flippedSlice = reverseImageY(slice, pitch) catch unreachable;
     defer c.allocator.free(flippedSlice);
 
-    //c.log("got slice: '{}'", slice.len);
-    const raw_image = RawImage{
+    fetch.didFetch(token, RawImage{
         .width = width,
         .height = height,
         .pitch = pitch,
         .raw = flippedSlice,
-    };
-
-    c.log("width: {}, height: {}", width, height);
-
-    fetch.didFetch(token, raw_image);
+    });
 }
 
-export fn onInit() void {
+export fn onInit(width: c_uint, height: c_uint) void {
     const t = GameState();
     t.framebuffer_width = 800;
     t.framebuffer_height = 450;

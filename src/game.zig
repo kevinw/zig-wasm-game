@@ -1,27 +1,25 @@
-usingnamespace @import("math3d.zig");
+usingnamespace @import("components.zig");
+usingnamespace @import("globals.zig");
 
 const std = @import("std");
+const warn = @import("base.zig").warn;
 const os = std.os;
 const c = @import("platform.zig");
-const panic = c.panic;
 const bufPrint = std.fmt.bufPrint;
 const debug_gl = @import("debug_gl.zig");
 const AllShaders = @import("all_shaders.zig").AllShaders;
 const static_geometry = @import("static_geometry.zig");
-const StaticGeometry = static_geometry.StaticGeometry;
 const pieces = @import("pieces.zig");
 const Piece = pieces.Piece;
 const Spritesheet = @import("spritesheet.zig").Spritesheet;
 const embedImage = @import("png.zig").embedImage;
 const RawImage = @import("png.zig").RawImage;
 const DebugConsole = @import("debug_console.zig").DebugConsole;
-
 const gbe = @import("gbe");
 const prefabs = @import("prefabs.zig");
-
-usingnamespace @import("components.zig");
-usingnamespace @import("globals.zig");
 const GameSession = @import("session.zig").GameSession;
+const ShaderProgram = @import("all_shaders.zig").ShaderProgram;
+const tinyexpr = @import("tinyexpr.zig");
 
 const WHITE = vec4(1, 1, 1, 1);
 
@@ -32,7 +30,8 @@ pub const Game = struct {
     session: GameSession,
     debug_console: DebugConsole,
     all_shaders: AllShaders,
-    static_geometry: StaticGeometry,
+    static_geometry: static_geometry.StaticGeometry,
+    test_shader: ShaderProgram,
     projection: Mat4x4,
     prng: std.rand.DefaultPrng,
     rand: *std.rand.Random,
@@ -46,15 +45,13 @@ pub const Game = struct {
     level: i32,
     is_paused: bool,
     is_loading: bool,
+    mojulo: Mojulo,
 
     pub fn is_playing(self: Self) void {
         return !(self.is_paused || self.game_over || self.is_loading);
     }
 };
 
-const PI = 3.14159265358979;
-const max_particle_count = 500;
-const max_falling_block_count = grid_width * grid_height;
 const margin_size = 10;
 const grid_width = 10;
 const grid_height = 20;
@@ -63,54 +60,33 @@ const board_width = grid_width * cell_size;
 const board_height = grid_height * cell_size;
 const board_left = margin_size;
 const board_top = margin_size;
-
-const next_piece_width = margin_size + 4 * cell_size + margin_size;
-const next_piece_height = next_piece_width;
-const next_piece_left = board_left + board_width + margin_size;
-const next_piece_top = board_top + board_height - next_piece_height;
-
-const score_width = next_piece_width;
-const score_height = next_piece_height;
-const score_left = next_piece_left;
-const score_top = next_piece_top - margin_size - score_height;
-
-const level_display_width = next_piece_width;
-const level_display_height = next_piece_height;
-const level_display_left = next_piece_left;
-const level_display_top = score_top - margin_size - level_display_height;
-
-const hold_piece_width = next_piece_width;
-const hold_piece_height = next_piece_height;
-const hold_piece_left = next_piece_left;
-const hold_piece_top = level_display_top - margin_size - hold_piece_height;
-
-pub const window_width = next_piece_left + next_piece_width + margin_size;
-pub const window_height = board_top + board_height + margin_size;
-
-const board_color = Vec4{ .data = [_]f32{ 72.0 / 255.0, 72.0 / 255.0, 72.0 / 255.0, 1.0 } };
-
-const init_piece_delay = 0.5;
-const min_piece_delay = 0.05;
-const level_delay_increment = 0.05;
-
 pub const font_char_width = 18;
 pub const font_char_height = 32;
 
-const gravity = 0.14;
-const time_per_level = 60.0;
-
-const AUDIO_BUFFER_SIZE = 2048;
-
 const a: f32 = 0.1;
 
-var beep = blk: {
-    @setEvalBranchQuota(AUDIO_BUFFER_SIZE * 2 + 1);
-    var b = [_]f32{0} ** AUDIO_BUFFER_SIZE;
-    for (b) |*x, i| {
-        x.* = if ((i / 64) % 2 == 1) a else -a;
+fn fillRectShader(s: *ShaderProgram, t: *Game, x: f32, y: f32, w: f32, h: f32) void {
+    s.bind();
+
+    const model = mat4x4_identity.translate(x, y, 0.0).scale(w, h, 0.0);
+    s.setUniformMat4x4(s.uniformLoc("MVP"), t.projection.mult(model));
+    s.setUniformFloat(s.uniformLoc("time"), Time.frame_count);
+
+    {
+        c.glBindBuffer(c.GL_ARRAY_BUFFER, t.static_geometry.rect_2d_vertex_buffer);
+        const attribPos = s.attribLoc("VertexPosition");
+        c.glEnableVertexAttribArray(@intCast(c.GLuint, attribPos));
+        c.glVertexAttribPointer(@intCast(c.GLuint, attribPos), 3, c.GL_FLOAT, c.GL_FALSE, 0, if (c.is_web) 0 else null);
     }
-    break :blk b;
-};
+    {
+        c.glBindBuffer(c.GL_ARRAY_BUFFER, t.static_geometry.rect_2d_tex_coord_buffer);
+        const attribLoc = s.attribLoc("TexCoord");
+        c.glEnableVertexAttribArray(@intCast(c.GLuint, attribLoc));
+        c.glVertexAttribPointer(@intCast(c.GLuint, attribLoc), 2, c.GL_FLOAT, c.GL_FALSE, 0, if (c.is_web) 0 else null);
+    }
+
+    c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+}
 
 fn fillRectMvp(t: *Game, color: Vec4, mvp: Mat4x4) void {
     t.all_shaders.primitive.bind();
@@ -120,7 +96,6 @@ fn fillRectMvp(t: *Game, color: Vec4, mvp: Mat4x4) void {
     c.glBindBuffer(c.GL_ARRAY_BUFFER, t.static_geometry.rect_2d_vertex_buffer);
     c.glEnableVertexAttribArray(@intCast(c.GLuint, t.all_shaders.primitive_attrib_position));
     c.glVertexAttribPointer(@intCast(c.GLuint, t.all_shaders.primitive_attrib_position), 3, c.GL_FLOAT, c.GL_FALSE, 0, if (c.is_web) 0 else null);
-
     c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 }
 
@@ -128,28 +103,6 @@ fn fillRect(t: *Game, color: Vec4, x: f32, y: f32, w: f32, h: f32) void {
     const model = mat4x4_identity.translate(x, y, 0.0).scale(w, h, 0.0);
     const mvp = t.projection.mult(model);
     fillRectMvp(t, color, mvp);
-}
-
-fn drawParticle(t: *Game, p: Particle) void {
-    const model = mat4x4_identity.translateByVec(p.pos).rotate(p.angle, p.axis).scale(p.scale_w, p.scale_h, 0.0);
-
-    const mvp = t.projection.mult(model);
-
-    t.all_shaders.primitive.bind();
-    t.all_shaders.primitive.setUniformVec4(t.all_shaders.primitive_uniform_color, p.color);
-    t.all_shaders.primitive.setUniformMat4x4(t.all_shaders.primitive_uniform_mvp, mvp);
-
-    c.glBindBuffer(c.GL_ARRAY_BUFFER, t.static_geometry.triangle_2d_vertex_buffer);
-    c.glEnableVertexAttribArray(@intCast(c.GLuint, t.all_shaders.primitive_attrib_position));
-    c.glVertexAttribPointer(@intCast(c.GLuint, t.all_shaders.primitive_attrib_position), 3, c.GL_FLOAT, c.GL_FALSE, 0, if (c.is_web) 0 else null);
-
-    c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 3);
-}
-
-fn drawFallingBlock(t: *Game, p: Particle) void {
-    const model = mat4x4_identity.translateByVec(p.pos).rotate(p.angle, p.axis).scale(p.scale_w, p.scale_h, 0.0);
-    const mvp = t.projection.mult(model);
-    fillRectMvp(t, p.color, mvp);
 }
 
 fn drawCenteredText(t: *Game, text: []const u8, scale: f32, color: Vec4) void {
@@ -176,6 +129,9 @@ pub fn draw(t: *Game) void {
     } else if (t.is_paused) {
         drawCenteredText(t, "PAUSED", 1.0, WHITE);
     } else {
+        const w = @intToFloat(f32, t.framebuffer_width);
+        const h = @intToFloat(f32, t.framebuffer_height);
+        fillRectShader(&t.test_shader, t, 0, 0, w, h);
         //drawCenteredText(t, "play", 4.0, vec4(1, 1, 1, 0.5));
         const color = vec4(1, 1, 1, 1);
 
@@ -234,8 +190,7 @@ pub fn nextFrame(t: *Game, elapsed: f64) void {
 
     if (t.is_paused) return;
 
-    Time.delta_time = @floatCast(f32, elapsed);
-    Time.time += Time.delta_time;
+    Time._update_next_frame(elapsed);
 
     @import("components_auto.zig").run_ALL(&t.session);
     t.debug_console.update(elapsed);
@@ -255,16 +210,65 @@ pub fn didImageLoad() void {
     tetris_state.is_loading = false;
 }
 
+var equation_text: []const u8 = "return fract(pow(x, y/time))*400.0;\n}";
+
+comptime {
+    _ = @import("tinyexpr.zig");
+}
+
+pub fn update_equation(t: *Game, eq_text: []const u8) void {
+    c.log("update equation: {}", eq_text);
+
+    var buf = std.Buffer.init(c.allocator, "") catch unreachable;
+    defer buf.deinit();
+    @import("tinyglsl.zig").translate(&buf, eq_text) catch |e| {
+        warn("{}", e);
+        const s = std.fmt.allocPrint(c.allocator, "{{\"error\": true, \"reason\": \"{}\"}}", e) catch unreachable;
+        defer c.allocator.free(s);
+        c.onEquationResultJSON(s.ptr, s.len);
+        return;
+    };
+
+    const glsl = buf.toSliceConst();
+    c.log("translated:      {}", glsl);
+
+    const slices = [_][]const u8{
+        "return (", glsl, ");\n}",
+    };
+
+    equation_text = std.mem.concat(c.allocator, u8, slices) catch unreachable;
+    restartGame(t);
+}
+
 pub fn restartGame(t: *Game) void {
     t.game_over = false;
     t.is_paused = false;
     t.debug_console.reset();
 
-    t.session.init(42, c.allocator);
+    const ASSETS = "../assets/";
+    const vert = @embedFile(ASSETS ++ "mojulo_vert.glsl");
+    const fragTemplate = @embedFile(ASSETS ++ "mojulo_frag.glsl");
+    //const frag = std.fmt.allocPrint(c.allocator, fragTemplate) catch unreachable;
+    //pub fn concat(allocator: *Allocator, comptime T: type, slices: []const []const T) ![]T {
 
-    c.log("before spawn");
+    const slices = [_][]const u8{ fragTemplate, equation_text };
+    const frag = std.mem.concat(c.allocator, u8, slices) catch unreachable;
 
-    _ = prefabs.Player.spawn(&t.session, prefabs.Player.Params{}) catch unreachable;
+    //const fragTemplate = @embedFile("../assets/mojulo_frag.glsl");
+
+    //const frag = blk: {
+    //    @setEvalBranchQuota(5000);
+    //    const frag = std.fmt.allocPrint(c.allocator, fragTemplate) catch unreachable;
+    //    defer c.allocator.free(frag);
+    //    break :blk frag;
+    //};
+
+    t.test_shader = ShaderProgram.create(vert, frag, null);
+
+    const gs = &t.session;
+    gs.init(42, c.allocator);
+    _ = prefabs.Player.spawn(gs, prefabs.Player.Params{}) catch unreachable;
+    const mojulo_id = prefabs.Mojulo.spawn(gs, vec3(20, 80, 0));
 
     if (t.session.findFirst(Sprite)) |spr| {
         spr.spritesheet = &t.player;

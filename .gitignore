@@ -1,5 +1,7 @@
 zig-cache/
 tetris
+node_modules/
+output.txt
 
 main_web.h
 *.o
