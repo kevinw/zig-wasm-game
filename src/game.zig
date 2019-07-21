@@ -46,6 +46,7 @@ pub const Game = struct {
     is_paused: bool,
     is_loading: bool,
     mojulo: Mojulo,
+    quit_requested: bool = false,
 
     pub fn is_playing(self: Self) void {
         return !(self.is_paused || self.game_over || self.is_loading);
@@ -139,11 +140,11 @@ pub fn draw(t: *Game) void {
         while (it.next()) |object| {
             if (!object.is_active) continue;
             const sprite = object.data;
-            if (sprite.spritesheet) |spritesheet| {
-                spritesheet.draw(t.all_shaders, sprite.index, sprite_matrix(t.projection, 48, sprite.pos), color);
-            } else {
-                fillRect(t, vec4(1, 0, 1, 1), sprite.pos.x, sprite.pos.y, 8, 8);
-            }
+            //if (sprite.spritesheet) |spritesheet| {
+            //spritesheet.draw(t.all_shaders, sprite.index, sprite_matrix(t.projection, 48, sprite.pos), color);
+            //} else {
+            fillRect(t, vec4(1, 0, 1, 1), sprite.pos.x, sprite.pos.y, 8, 8);
+            //}
         }
     }
 
@@ -195,6 +196,10 @@ pub fn nextFrame(t: *Game, elapsed: f64) void {
     @import("components_auto.zig").run_ALL(&t.session);
     t.debug_console.update(elapsed);
     t.session.applyRemovals();
+
+    if (Input.getKey(c.KEY_Q)) {
+        t.quit_requested = true;
+    }
 }
 
 pub fn logMessage(t: *Game) void {

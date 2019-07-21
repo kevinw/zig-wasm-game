@@ -115,7 +115,6 @@ pub fn main() !void {
     t.rand = &t.prng.random;
 
     game.resetProjection(t);
-
     game.restartGame(t);
 
     c.glClearColor(0.0, 0.0, 0.0, 1.0);
@@ -130,8 +129,7 @@ pub fn main() !void {
 
     const start_time = c.glfwGetTime();
     var prev_time = start_time;
-
-    while (c.glfwWindowShouldClose(window) == c.GL_FALSE) {
+    while (c.glfwWindowShouldClose(window) == c.GL_FALSE and !t.quit_requested) {
         c.glClear(c.GL_COLOR_BUFFER_BIT | c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT);
 
         const now_time = c.glfwGetTime();
@@ -139,10 +137,8 @@ pub fn main() !void {
         prev_time = now_time;
 
         game.nextFrame(t, elapsed);
-
         game.draw(t);
         c.glfwSwapBuffers(window);
-
         c.glfwPollEvents();
     }
 

@@ -22,6 +22,7 @@ pub const KEY_I: K = GLFW_KEY_I;
 pub const KEY_J: K = GLFW_KEY_J;
 pub const KEY_K: K = GLFW_KEY_K;
 pub const KEY_L: K = GLFW_KEY_L;
+pub const KEY_Q: K = GLFW_KEY_Q;
 
 pub var _inputWindow: *Window = undefined;
 
