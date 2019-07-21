@@ -208,6 +208,11 @@ pub fn translate(buf: *std.Buffer, tiny: []const u8) !void {
     try toGLSL(expr, buf);
 }
 
+pub fn translateWithVars(buf: *std.Buffer, tiny: []const u8, vars: []Variable) !void {
+    const expr = try tinyexpr.compile(buf.list.allocator, tiny, vars);
+    try toGLSL(expr, buf);
+}
+
 fn assertGLSL(tinyexpr_str: []const u8, expected_glsl: []const u8) !void {
     var buf = try std.Buffer.init(test_allocator, "");
     defer buf.deinit();

@@ -47,7 +47,6 @@ pub fn get(path: []const u8, fetch_type: FetchType) !void {
         .fetch_type = fetch_type,
     });
 
-    log("fetching {}", path);
     c.fetchBytesSlice(path, nextToken);
     nextToken += 1;
 }
@@ -98,7 +97,6 @@ pub fn didFetch(token: u32, raw_image: RawImage) void {
 
         switch (entry.fetch_type) {
             .SpritesheetFromCellSize => |args| {
-                log("didFetch token={}, w={} h={}", token, raw_image.width, raw_image.height);
                 args.spritesheet.init(raw_image, args.cell_width, args.cell_height) catch |err| {
                     log("error initing spritesheet for token {}: {}", token, err);
                 };

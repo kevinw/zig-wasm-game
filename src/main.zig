@@ -37,8 +37,8 @@ extern fn keyCallback(window: ?*c.GLFWwindow, key: c_int, scancode: c_int, actio
     }
 }
 
-const WINDOW_WIDTH = 800;
-const WINDOW_HEIGHT = 450;
+const WINDOW_WIDTH = 1200;
+const WINDOW_HEIGHT = 750;
 
 extern fn getProcAddress(name: [*c]const u8) ?*c_void {
     var ptr = c.glfwGetProcAddress(name);
