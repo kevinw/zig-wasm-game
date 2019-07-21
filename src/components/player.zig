@@ -13,16 +13,16 @@ pub fn update(gs: *GameSession, player: *Player, sprite: *Sprite, gun: *Gun) boo
     const pos = &sprite.pos;
 
     const c = @import("../platform.zig");
-    const keys = &Input.keys;
-    if (keys[c.KEY_RIGHT] or keys[c.KEY_D]) pos.x += speed;
-    if (keys[c.KEY_LEFT] or keys[c.KEY_A]) pos.x -= speed;
-    if (keys[c.KEY_DOWN] or keys[c.KEY_S]) pos.y += speed;
-    if (keys[c.KEY_UP] or keys[c.KEY_W]) pos.y -= speed;
 
-    gun.fire_right = keys[c.KEY_L];
-    gun.fire_left = keys[c.KEY_J];
-    gun.fire_up = keys[c.KEY_I];
-    gun.fire_down = keys[c.KEY_K];
+    if (Input.getKey(c.KEY_RIGHT) or Input.getKey(c.KEY_D)) pos.x += speed;
+    if (Input.getKey(c.KEY_LEFT) or Input.getKey(c.KEY_A)) pos.x -= speed;
+    if (Input.getKey(c.KEY_DOWN) or Input.getKey(c.KEY_S)) pos.y += speed;
+    if (Input.getKey(c.KEY_UP) or Input.getKey(c.KEY_W)) pos.y -= speed;
+
+    gun.fire_right = Input.getKey(c.KEY_L);
+    gun.fire_left = Input.getKey(c.KEY_J);
+    gun.fire_up = Input.getKey(c.KEY_I);
+    gun.fire_down = Input.getKey(c.KEY_K);
 
     return true;
 }

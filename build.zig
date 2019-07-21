@@ -31,6 +31,9 @@ pub fn build(b: *Builder) void {
 
     exe.addPackagePath("gbe", "gbe/src/gbe.zig");
 
+    exe.addLibPath("../glfw/zig-cache/lib");
+    exe.addIncludeDir("../glfw/include");
+
     // for libraries installed by vcpkg
     exe.addIncludeDir(VCPKG_PATH ++ "include");
     exe.addLibPath(VCPKG_PATH ++ "lib");
@@ -51,7 +54,6 @@ pub fn build(b: *Builder) void {
     // exe.linkSystemLibrary("chipmunk.lib");
 
     // TODO: make glfw a submodule and invoke its build.zig from here
-    exe.addLibPath("../glfw/zig-cache/lib");
 
     var args = std.ArrayList([]const u8).init(b.allocator);
     args.append("C:\\Users\\Kevin\\AppData\\Local\\Programs\\Python\\Python37-32\\python.exe") catch unreachable;

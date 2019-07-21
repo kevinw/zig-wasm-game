@@ -192,9 +192,9 @@ pub const ShaderProgram = struct {
         maybe_geometry_source: ?[]u8,
     ) ShaderProgram {
         var sp: ShaderProgram = undefined;
-        sp.vertex_id = shader.initShader(vertex_source, "vertex\x00", c.GL_VERTEX_SHADER);
-        sp.fragment_id = shader.initShader(frag_source, "fragment\x00", c.GL_FRAGMENT_SHADER);
-        sp.program_id = shader.linkShaderProgram(sp.vertex_id, sp.fragment_id, null);
+        sp.vertex_id = c.initShader(vertex_source, "vertex\x00", c.GL_VERTEX_SHADER);
+        sp.fragment_id = c.initShader(frag_source, "fragment\x00", c.GL_FRAGMENT_SHADER);
+        sp.program_id = c.linkShaderProgram(sp.vertex_id, sp.fragment_id, null);
         if (maybe_geometry_source) |geo_source| {
             unreachable;
         }

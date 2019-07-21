@@ -1,3 +1,4 @@
+const builtin = @import("builtin");
 const c = @import("platform.zig");
 pub usingnamespace @import("math3d.zig");
 
@@ -14,7 +15,13 @@ pub const Time = struct {
 };
 
 pub const Input = struct {
-    pub var keys: [500]bool = [_]bool{false} ** 500;
+    const Self = @This();
+
+    pub fn getKey(keyCode: KeyCode) bool {
+        return c.platformGetKey(keyCode);
+    }
 };
+
+pub const KeyCode = c.KeyCode;
 
 pub const log = @import("log.zig").log;

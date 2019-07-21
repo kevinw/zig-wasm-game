@@ -58,13 +58,13 @@ export fn onKeyDown(keyCode: c_int, state: u8, repeat: c_int) void {
         else => {},
     }
 
-    Input.keys[@intCast(usize, keyCode)] = true;
+    c.wasm_keys[@intCast(usize, keyCode)] = true;
 }
 
 export fn onKeyUp(keyCode: c_int, state: u8) void {
     //if (state != 0) return;
     const t = GameState();
-    Input.keys[@intCast(usize, keyCode)] = false;
+    c.wasm_keys[@intCast(usize, keyCode)] = false;
 }
 
 export fn onMouseDown(button: c_int, x: c_int, y: c_int) void {}

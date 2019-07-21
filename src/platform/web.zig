@@ -9,6 +9,14 @@ const builtin = @import("builtin");
 pub const allocator = @import("std").heap.wasm_allocator;
 pub const Window = c_void;
 
+pub var wasm_keys: [256]bool = [_]bool{false} ** 256;
+
+pub const KeyCode = usize;
+
+pub fn platformGetKey(keyCode: KeyCode) bool {
+    return wasm_keys[keyCode];
+}
+
 //pub fn allocPrint(allocator: *mem.Allocator, comptime fmt: []const u8, args: ...) AllocPrintError![]u8 {
 
 pub fn log(comptime fmt: []const u8, args: ...) void {

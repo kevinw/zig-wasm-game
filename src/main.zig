@@ -19,28 +19,22 @@ const font_png = @embedFile("../assets/font.png");
 pub const _log = @import("log.zig").log;
 
 extern fn errorCallback(err: c_int, description: [*c]const u8) void {
-    panic("Error: {}\n", description);
+    panic("Error: {}\n", std.mem.toSliceConst(u8, description));
 }
 
 extern fn keyCallback(window: ?*c.GLFWwindow, key: c_int, scancode: c_int, action: c_int, mods: c_int) void {
+    const down = if (action == c.GLFW_RELEASE) false else true;
+    const keycode = @intCast(usize, key);
+
     if (action != c.GLFW_PRESS) return;
     const t = @ptrCast(*Game, @alignCast(@alignOf(Game), c.glfwGetWindowUserPointer(window).?));
 
     switch (key) {
         c.GLFW_KEY_ESCAPE => c.glfwSetWindowShouldClose(window, c.GL_TRUE),
-        //c.GLFW_KEY_SPACE => game.userDropCurPiece(t),
-        //c.GLFW_KEY_DOWN => game.userCurPieceFall(t),
-        //c.GLFW_KEY_LEFT => game.userMoveCurPiece(t, -1),
-        //c.GLFW_KEY_RIGHT => game.userMoveCurPiece(t, 1),
-        //c.GLFW_KEY_UP => game.userRotateCurPiece(t, 1),
-        //c.GLFW_KEY_LEFT_SHIFT, c.GLFW_KEY_RIGHT_SHIFT => game.userRotateCurPiece(t, -1),
         c.GLFW_KEY_R => game.restartGame(t),
         c.GLFW_KEY_P => game.userTogglePause(t),
-        //c.GLFW_KEY_LEFT_CONTROL, c.GLFW_KEY_RIGHT_CONTROL => game.userSetHoldPiece(t),
         else => {},
     }
-
-    Input.keys[@intCast(usize, key)] = if (action == c.GLFW_RELEASE) false else true;
 }
 
 const WINDOW_WIDTH = 800;
@@ -49,6 +43,16 @@ const WINDOW_HEIGHT = 450;
 extern fn getProcAddress(name: [*c]const u8) ?*c_void {
     var ptr = c.glfwGetProcAddress(name);
     return @intToPtr(?*c_void, @ptrToInt(ptr));
+}
+
+fn getKeyCode(keyCode: KeyCode) KeyCode {
+    const keyCodeCInt = @intCast(c_int, keyCode);
+
+    const scancode = c.glfwGetKeyScancode(keyCodeCInt);
+    if (scancode == -1)
+        std.debug.panic("cannot find scancode for {} {}", keyCode, keyCodeCInt);
+
+    return @intCast(KeyCode, scancode);
 }
 
 pub fn main() !void {
@@ -84,6 +88,8 @@ pub fn main() !void {
     c.glfwGetFramebufferSize(window, &t.framebuffer_width, &t.framebuffer_height);
     assert(t.framebuffer_width >= WINDOW_WIDTH);
     assert(t.framebuffer_height >= WINDOW_HEIGHT);
+
+    c._setInputWindow(window);
 
     t.window = window;
 
