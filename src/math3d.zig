@@ -177,9 +177,9 @@ pub const Vec3 = struct {
     /// returns the cross product
     pub fn cross(v: Vec3, other: Vec3) Vec3 {
         return Vec3{
-            v.data.y * other.data.z - other.data.y * v.data.z,
-            v.data.z * other.data.x - other.data.z * v.data.x,
-            v.data.x * other.data.y - other.data.x * v.data.y,
+            .x = v.y * other.z - other.y * v.z,
+            .y = v.z * other.x - other.z * v.x,
+            .z = v.x * other.y - other.x * v.y,
         };
     }
 
@@ -197,7 +197,7 @@ pub const Vec3 = struct {
         };
     }
 
-    pub fn multScalar(v: Vec3, scalar: f32) Vec3 {
+    pub fn multScalar(v: *const Vec3, scalar: f32) Vec3 {
         return Vec3{
             .x = v.x * scalar,
             .y = v.y * scalar,
@@ -213,6 +213,37 @@ pub fn vec3(x: f32, y: f32, z: f32) Vec3 {
         .z = z,
     };
 }
+
+pub const Vec2 = struct {
+    x: f32,
+    y: f32,
+
+    pub fn init(x: f32, y: f32) Vec2 {
+        return Vec2{ .x = x, .y = y };
+    }
+
+    pub fn normalize(v: *const Vec2) Vec2 {
+        return v.scale(1.0 / std.math.sqrt(v.dot(v)));
+    }
+
+    pub fn length(v: *const Vec2) f32 {
+        return std.math.sqrt(v.dot(v));
+    }
+
+    pub fn scale(v: *const Vec2, scalar: f32) Vec2 {
+        return Vec2{
+            .x = v.x * scalar,
+            .y = v.y * scalar,
+        };
+    }
+
+    pub fn dot(v: *const Vec2, other: *const Vec2) f32 {
+        return v.x * other.x +
+            v.y * other.y;
+    }
+
+    pub const zero = Vec2{ .x = 0, .y = 0 };
+};
 
 pub const Vec4 = struct {
     x: f32,

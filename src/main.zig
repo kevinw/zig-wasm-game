@@ -46,9 +46,8 @@ extern fn getProcAddress(name: [*c]const u8) ?*c_void {
 }
 
 fn getKeyCode(keyCode: KeyCode) KeyCode {
-    const keyCodeCInt = @intCast(c_int, keyCode);
-
-    const scancode = c.glfwGetKeyScancode(keyCodeCInt);
+    //const keyCodeCInt = @intCast(c_int, keyCode);
+    const scancode = c.glfwGetKeyScancode(keyCode);
     if (scancode == -1)
         std.debug.panic("cannot find scancode for {} {}", keyCode, keyCodeCInt);
 
