@@ -127,6 +127,8 @@ pub fn main() !void {
 
     debug_gl.assertNoError();
 
+    t.load_resources();
+
     const start_time = c.glfwGetTime();
     var prev_time = start_time;
     while (c.glfwWindowShouldClose(window) == c.GL_FALSE and !t.quit_requested) {

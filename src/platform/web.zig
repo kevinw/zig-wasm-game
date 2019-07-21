@@ -40,3 +40,7 @@ pub fn initShader(source: []const u8, name: []const u8, kind: c_uint) c_uint {
 pub fn linkShaderProgram(vertex_id: c_uint, fragment_id: c_uint, geometry_id: ?c_uint) c_uint {
     return webgl.glLinkShaderProgram(vertex_id, fragment_id);
 }
+
+pub fn fetchBytesSlice(url: []const u8, token: u32) void {
+    wasm.fetchBytes(url.ptr, url.len, token);
+}

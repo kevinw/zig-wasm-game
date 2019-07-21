@@ -2,6 +2,7 @@ pub usingnamespace @import("native.zig");
 usingnamespace @import("native.zig");
 
 const std = @import("std");
+const png = @import("../png.zig");
 pub const allocator = std.heap.c_allocator;
 pub const panic = std.debug.panic;
 pub const warn = std.debug.warn;
@@ -32,6 +33,28 @@ pub fn _setInputWindow(window: *Window) void {
 
 pub fn platformGetKey(keyCode: KeyCode) bool {
     return glfwGetKey(_inputWindow, keyCode) != GLFW_RELEASE;
+}
+
+fn fetchImage(_url: []const u8, token: u32) void {
+    const url = std.mem.dupe(allocator, u8, _url) catch unreachable;
+    defer allocator.free(url);
+    for (url) |*ch| {
+        if (ch.* == '/')
+            ch.* = '\\';
+    }
+
+    const compressed_bytes = std.io.readFileAlloc(allocator, url) catch unreachable;
+    defer allocator.free(compressed_bytes);
+
+    const raw_image = png.RawImage.fromPng(compressed_bytes) catch unreachable;
+
+    @import("../fetch.zig").onFetch(raw_image.width, raw_image.height, raw_image.raw, token);
+}
+
+pub fn fetchBytesSlice(url: []const u8, token: u32) void {
+    if (std.mem.endsWith(u8, url, ".png")) {
+        fetchImage(url, token);
+    }
 }
 
 pub fn initShader(source: []const u8, name: []const u8, kind: GLenum) GLuint {

@@ -2,6 +2,8 @@ const builtin = @import("builtin");
 const std = @import("std");
 
 pub const is_web = builtin.arch == builtin.Arch.wasm32;
+pub const NEEDS_Y_FLIP = is_web;
+
 pub usingnamespace if (is_web) @import("platform/web.zig") else @import("platform/c.zig");
 
 pub extern fn setScore(_: c_int) void;

@@ -73,48 +73,13 @@ export fn onMouseUp(button: c_int, x: c_int, y: c_int) void {}
 
 export fn onMouseMove(x: c_int, y: c_int) void {}
 
-fn reverseImageY(bytes: []u8, pitch: u32) ![]u8 {
-    const new_bytes = try c.allocator.alloc(u8, bytes.len);
-    const num_rows = bytes.len / pitch;
-
-    var i: u32 = 0;
-    while (i < num_rows) : (i += 1) {
-        const row_start = i * pitch;
-        const new_row_start = (num_rows - i - 1) * pitch;
-
-        const dest = new_bytes[new_row_start .. new_row_start + pitch];
-        const src = bytes[row_start .. row_start + pitch];
-
-        std.mem.copy(u8, dest, src);
-    }
-
-    //pub fn copy(comptime T: type, dest: []T, source: []const T) void {
-    return new_bytes;
-}
-
 var vertex_array_object: c.GLuint = undefined;
 
 export fn onFetch(width: c_uint, height: c_uint, bytes_ptr: c_uint, bytes_len: c_uint, token: c_uint) void {
-    //c.log("FROM WASM ON FETCH {} {}", bytes_ptr, bytes_len);
-    if (bytes_len == 0 or bytes_ptr == 0) {
-        c.log("error: bytes_len or bytes_ptr was zero");
-        return;
-    }
+    var bytes = @intToPtr([*]u8, bytes_ptr)[0..bytes_len];
+    defer c.allocator.free(bytes);
 
-    var slice = @intToPtr([*]u8, bytes_ptr)[0..bytes_len];
-    defer c.allocator.free(slice);
-
-    const pitch = bytes_len / height;
-
-    var flippedSlice = reverseImageY(slice, pitch) catch unreachable;
-    defer c.allocator.free(flippedSlice);
-
-    fetch.didFetch(token, RawImage{
-        .width = width,
-        .height = height,
-        .pitch = pitch,
-        .raw = flippedSlice,
-    });
+    fetch.onFetch(width, height, bytes, token);
 }
 
 export fn onInit(width: c_uint, height: c_uint) void {
@@ -135,7 +100,6 @@ export fn onInit(width: c_uint, height: c_uint) void {
     t.rand = &t.prng.random;
 
     game.resetProjection(t);
-
     game.restartGame(t);
 
     c.glClearColor(0.0, 0.0, 0.0, 1.0);
@@ -147,12 +111,7 @@ export fn onInit(width: c_uint, height: c_uint) void {
 
     debug_gl.assertNoError();
 
-    fetch.fromCellSize("assets/face.png", &t.player, 48, 48) catch unreachable;
-    fetch.fromCellSize("assets/bullet.png", &t.bullet_sprite, 10, 10) catch unreachable;
-}
-
-pub fn fetchBytes(url: []const u8) void {
-    c.fetchBytes(url.ptr, url.len);
+    t.load_resources();
 }
 
 var prev_time: c_int = 0;

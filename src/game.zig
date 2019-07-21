@@ -12,7 +12,7 @@ const static_geometry = @import("static_geometry.zig");
 const pieces = @import("pieces.zig");
 const Piece = pieces.Piece;
 const Spritesheet = @import("spritesheet.zig").Spritesheet;
-const embedImage = @import("png.zig").embedImage;
+const embedImage = @import("png.zig").elogmbedImage;
 const RawImage = @import("png.zig").RawImage;
 const DebugConsole = @import("debug_console.zig").DebugConsole;
 const gbe = @import("gbe");
@@ -26,6 +26,8 @@ const WHITE = vec4(1, 1, 1, 1);
 pub var game_state: Game = undefined;
 
 pub const Game = struct {
+    const Self = @This();
+
     window: *c.Window,
     session: GameSession,
     debug_console: DebugConsole,
@@ -48,8 +50,14 @@ pub const Game = struct {
     mojulo: Mojulo,
     quit_requested: bool = false,
 
-    pub fn is_playing(self: Self) void {
+    pub fn is_playing(self: *Self) void {
         return !(self.is_paused || self.game_over || self.is_loading);
+    }
+
+    pub fn load_resources(self: *Self) void {
+        const fetch = @import("fetch.zig");
+        fetch.fromCellSize("assets/face.png", &self.player, 48, 48) catch unreachable;
+        fetch.fromCellSize("assets/bullet.png", &self.bullet_sprite, 10, 10) catch unreachable;
     }
 };
 
@@ -140,11 +148,11 @@ pub fn draw(t: *Game) void {
         while (it.next()) |object| {
             if (!object.is_active) continue;
             const sprite = object.data;
-            //if (sprite.spritesheet) |spritesheet| {
-            //spritesheet.draw(t.all_shaders, sprite.index, sprite_matrix(t.projection, 48, sprite.pos), color);
-            //} else {
-            fillRect(t, vec4(1, 0, 1, 1), sprite.pos.x, sprite.pos.y, 8, 8);
-            //}
+            if (sprite.spritesheet) |spritesheet| {
+                spritesheet.draw(t.all_shaders, sprite.index, sprite_matrix(t.projection, 48, sprite.pos), color);
+            } else {
+                fillRect(t, vec4(1, 0, 1, 1), sprite.pos.x, sprite.pos.y, 8, 8);
+            }
         }
     }
 
