@@ -6,6 +6,9 @@ const debug_gl = @import("debug_gl.zig");
 const Vec4 = math3d.Vec4;
 const Mat4x4 = math3d.Mat4x4;
 const allocator = platform.allocator;
+const log = @import("log.zig").log;
+
+const shader = @import("shader.zig");
 
 pub const AllShaders = struct {
     primitive: ShaderProgram,
@@ -122,7 +125,7 @@ pub const ShaderProgram = struct {
     }
 
     pub fn uniformLocation(sp: ShaderProgram, name: []const u8) c.GLint {
-        if (c.is_web and name[name.len - 1] != 0) c.log("warning: last byte should be null: {}", name);
+        if (c.is_web and name[name.len - 1] != 0) log("warning: last byte should be null: {}", name);
 
         const id = if (c.is_web)
             c.glGetUniformLocation(sp.program_id, name.ptr, name.len - 1)
@@ -152,7 +155,7 @@ pub const ShaderProgram = struct {
         if (c.is_web) {
             c.glUniform3fv(uniform_id, value.x, value.y, value.z);
         } else {
-            c.glUniform3fv(uniform_id, 1, value.data[0..].ptr);
+            c.glUniform3fv(uniform_id, 1, value.ptr());
         }
     }
 
@@ -160,7 +163,8 @@ pub const ShaderProgram = struct {
         if (c.is_web) {
             c.glUniform4fv(uniform_id, value.x, value.y, value.z, value.w);
         } else {
-            c.glUniform4fv(uniform_id, 1, value.data[0..].ptr);
+            var v = value;
+            c.glUniform4fv(uniform_id, 1, v.ptr());
         }
     }
 
@@ -188,9 +192,9 @@ pub const ShaderProgram = struct {
         maybe_geometry_source: ?[]u8,
     ) ShaderProgram {
         var sp: ShaderProgram = undefined;
-        sp.vertex_id = c.initShader(vertex_source, "vertex\x00", c.GL_VERTEX_SHADER);
-        sp.fragment_id = c.initShader(frag_source, "fragment\x00", c.GL_FRAGMENT_SHADER);
-        sp.program_id = c.linkShaderProgram(sp.vertex_id, sp.fragment_id, null);
+        sp.vertex_id = shader.initShader(vertex_source, "vertex\x00", c.GL_VERTEX_SHADER);
+        sp.fragment_id = shader.initShader(frag_source, "fragment\x00", c.GL_FRAGMENT_SHADER);
+        sp.program_id = shader.linkShaderProgram(sp.vertex_id, sp.fragment_id, null);
         if (maybe_geometry_source) |geo_source| {
             unreachable;
         }

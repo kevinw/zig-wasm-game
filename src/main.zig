@@ -1,3 +1,4 @@
+usingnamespace @import("globals.zig");
 const std = @import("std");
 const assert = std.debug.assert;
 const os = std.os;
@@ -14,6 +15,8 @@ const StaticGeometry = @import("static_geometry.zig").StaticGeometry;
 const RawImage = @import("png.zig").RawImage;
 
 const font_png = @embedFile("../assets/font.png");
+
+pub const _log = @import("log.zig").log;
 
 extern fn errorCallback(err: c_int, description: [*c]const u8) void {
     panic("Error: {}\n", description);
@@ -36,6 +39,16 @@ extern fn keyCallback(window: ?*c.GLFWwindow, key: c_int, scancode: c_int, actio
         //c.GLFW_KEY_LEFT_CONTROL, c.GLFW_KEY_RIGHT_CONTROL => game.userSetHoldPiece(t),
         else => {},
     }
+
+    Input.keys[@intCast(usize, key)] = if (action == c.GLFW_RELEASE) false else true;
+}
+
+const WINDOW_WIDTH = 800;
+const WINDOW_HEIGHT = 450;
+
+extern fn getProcAddress(name: [*c]const u8) ?*c_void {
+    var ptr = c.glfwGetProcAddress(name);
+    return @intToPtr(?*c_void, @ptrToInt(ptr));
 }
 
 pub fn main() !void {
@@ -55,7 +68,7 @@ pub fn main() !void {
     c.glfwWindowHint(c.GLFW_STENCIL_BITS, 8);
     c.glfwWindowHint(c.GLFW_RESIZABLE, c.GL_FALSE);
 
-    var window = c.glfwCreateWindow(game.window_width, game.window_height, c"Game", null, null) orelse {
+    var window = c.glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, c"Game", null, null) orelse {
         panic("unable to create window\n");
     };
     defer c.glfwDestroyWindow(window);
@@ -64,10 +77,13 @@ pub fn main() !void {
     c.glfwMakeContextCurrent(window);
     c.glfwSwapInterval(1);
 
-    var t = &game.tetris_state;
+    if (c.gladLoadGLLoader(getProcAddress) == 0)
+        panic("Failed to initialize OpenGL context");
+
+    var t = &game.game_state;
     c.glfwGetFramebufferSize(window, &t.framebuffer_width, &t.framebuffer_height);
-    assert(t.framebuffer_width >= game.window_width);
-    assert(t.framebuffer_height >= game.window_height);
+    assert(t.framebuffer_width >= WINDOW_WIDTH);
+    assert(t.framebuffer_height >= WINDOW_HEIGHT);
 
     t.window = window;
 
@@ -83,11 +99,13 @@ pub fn main() !void {
     };
     defer t.font.deinit();
 
-    var seed_bytes: [@sizeOf(u64)]u8 = undefined;
-    os.getRandomBytes(seed_bytes[0..]) catch |err| {
-        panic("unable to seed random number generator: {}", err);
-    };
-    t.prng = std.rand.DefaultPrng.init(std.mem.readIntNative(u64, &seed_bytes));
+    //var seed_bytes: [@sizeOf(u64)]u8 = undefined;
+    //os.getRandomBytes(seed_bytes[0..]) catch |err| {
+    //panic("unable to seed random number generator: {}", err);
+    //};
+    //const randomSeed = std.mem.readIntNative(u64, &seed_bytes);
+    const randomSeed: u64 = 42;
+    t.prng = std.rand.DefaultPrng.init(randomSeed);
     t.rand = &t.prng.random;
 
     game.resetProjection(t);

@@ -3,6 +3,7 @@ const Spritesheet = @import("spritesheet.zig").Spritesheet;
 const game = @import("game.zig");
 const game_math = @import("game_math.zig");
 const c = @import("platform.zig");
+const _log = @import("log.zig").log;
 
 const std = @import("std");
 const assert = std.debug.assert;
@@ -48,7 +49,7 @@ pub const DebugConsole = struct {
             .time = self.now,
             .message = message,
         }) catch {
-            c.log("error: log full!");
+            _log("error: log full!");
         };
     }
 
@@ -61,7 +62,7 @@ pub const DebugConsole = struct {
             const elapsed = self.now - entry.time;
             if (elapsed < time_visible) {
                 new_entries.append(entry.*) catch {
-                    c.log("error: log was bigger than we expected");
+                    _log("error: log was bigger than we expected");
                 };
             }
         }

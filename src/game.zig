@@ -217,7 +217,7 @@ comptime {
 }
 
 pub fn update_equation(t: *Game, eq_text: []const u8) void {
-    c.log("update equation: {}", eq_text);
+    log("update equation: {}", eq_text);
 
     var buf = std.Buffer.init(c.allocator, "") catch unreachable;
     defer buf.deinit();
@@ -230,7 +230,7 @@ pub fn update_equation(t: *Game, eq_text: []const u8) void {
     };
 
     const glsl = buf.toSliceConst();
-    c.log("translated:      {}", glsl);
+    log("translated:      {}", glsl);
 
     const slices = [_][]const u8{
         "return (", glsl, ");\n}",

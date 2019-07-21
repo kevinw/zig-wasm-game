@@ -14,7 +14,7 @@ pub const Time = struct {
 };
 
 pub const Input = struct {
-    pub var keys: [255]bool = [_]bool{false} ** 255;
+    pub var keys: [500]bool = [_]bool{false} ** 500;
 };
 
-pub const log = c.log;
+pub const log = @import("log.zig").log;

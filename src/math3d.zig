@@ -219,6 +219,10 @@ pub const Vec4 = struct {
     y: f32,
     z: f32,
     w: f32,
+
+    pub fn ptr(self: *Vec4) *f32 {
+        return &self.x;
+    }
 };
 
 pub fn vec4(xa: f32, xb: f32, xc: f32, xd: f32) Vec4 {

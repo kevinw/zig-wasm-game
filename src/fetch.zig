@@ -60,7 +60,7 @@ pub fn didFetch(token: u32, raw_image: RawImage) void {
         switch (entry.fetch_type) {
             .SpritesheetFromCellSize => |args| {
                 args.spritesheet.init(raw_image, args.cell_width, args.cell_height) catch |err| {
-                    c.log("error initing spritesheet for token {}: {}", token, err);
+                    log("error initing spritesheet for token {}: {}", token, err);
                 };
             },
         }
