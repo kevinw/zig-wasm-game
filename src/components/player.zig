@@ -5,29 +5,11 @@ const c = @import("../platform.zig");
 
 const Sprite = @import("sprite.zig").Sprite;
 const Gun = @import("gun.zig").Gun;
+const platform_input = @import("../platform/platform_input.zig");
 
 pub const Player = struct {
     speed: f32 = 500,
 };
-
-const dead_zone = Vec2.init(0.09, 0.09);
-
-fn gamepadLeftStick() Vec2 {
-    var state: c.GLFWgamepadstate = undefined;
-    if (c.glfwGetGamepadState(0, &state) != 0) {
-        var axes = Vec2.init(
-            state.axes[c.GLFW_GAMEPAD_AXIS_LEFT_X],
-            state.axes[c.GLFW_GAMEPAD_AXIS_LEFT_Y],
-        );
-
-        if (std.math.fabs(axes.x) < dead_zone.x) axes.x = 0;
-        if (std.math.fabs(axes.y) < dead_zone.y) axes.y = 0;
-
-        return axes;
-    }
-
-    return Vec2.zero;
-}
 
 pub fn update(gs: *GameSession, player: *Player, sprite: *Sprite, gun: *Gun) bool {
     const speed: f32 = @floatCast(f32, Time.delta_time * player.speed);
@@ -39,7 +21,7 @@ pub fn update(gs: *GameSession, player: *Player, sprite: *Sprite, gun: *Gun) boo
     if (Input.getKey(c.KEY_DOWN) or Input.getKey(c.KEY_S)) delta.y += speed;
     if (Input.getKey(c.KEY_UP) or Input.getKey(c.KEY_W)) delta.y -= speed;
 
-    const leftStick = gamepadLeftStick();
+    const leftStick = platform_input.gamepadLeftStick();
     delta.x += speed * leftStick.x;
     delta.y += speed * leftStick.y;
 
