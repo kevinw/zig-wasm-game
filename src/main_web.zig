@@ -46,14 +46,7 @@ export fn onKeyDown(keyCode: c_int, state: u8, repeat: c_int) void {
     const t = GameState();
     switch (keyCode) {
         c.KEY_ESCAPE, c.KEY_P => game.userTogglePause(t),
-        //c.KEY_SPACE => game.userDropCurPiece(t),
-        //c.KEY_DOWN => game.userCurPieceFall(t),
-        //c.KEY_LEFT => game.userMoveCurPiece(t, -1),
-        //c.KEY_RIGHT => game.userMoveCurPiece(t, 1),
-        //c.KEY_UP => game.userRotateCurPiece(t, 1),
-        //c.KEY_SHIFT => game.userRotateCurPiece(t, -1),
         c.KEY_R => game.restartGame(t),
-        //c.KEY_CTRL => game.userSetHoldPiece(t),
         c.KEY_L => game.logMessage(t),
         else => {},
     }
