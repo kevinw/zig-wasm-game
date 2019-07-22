@@ -43,6 +43,7 @@ const passThroughFuncs = [_][]const u8{
     "tan",
     "rand",
     "abs",
+    "fract",
 };
 
 const funcRenames = blk: {
@@ -232,6 +233,10 @@ var test_vars = blk: {
         v[i] = Variable.init(decl.name, &@field(passThroughVars, decl.name));
     break :blk v;
 };
+
+test "glsl functions" {
+    try assertGLSL("fract(x)", "fract(x)");
+}
 
 test "ints to floats" {
     try assertGLSL("2", "2.0");

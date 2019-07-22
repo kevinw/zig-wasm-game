@@ -819,6 +819,10 @@ fn rand() f64 {
     unreachable;
 }
 
+fn fract(a: f64) f64 {
+    return a - std.math.floor(a);
+}
+
 pub const builtinFunctions = [_]FuncCall{
     FuncCall.init("abs", fabs),
     FuncCall.init("add", add),
@@ -834,6 +838,7 @@ pub const builtinFunctions = [_]FuncCall{
     FuncCall.init("pow", pow),
     FuncCall.init("fmod", fmod),
     FuncCall.init("rand", rand),
+    FuncCall.init("fract", fract),
 
     FuncCall.init("bitwise_xor", bitwise_xor),
     FuncCall.init("bitwise_and", bitwise_and),
@@ -906,6 +911,7 @@ test "function calls" {
     try assertInterp("max(42, 41)", 42.0);
     try assertInterp("max(41, 42)", 42.0);
     try assertInterp("max(-50, 50)", 50.0);
+    try assertInterp("fract(5.5)", 0.5);
 }
 
 test "infix function application" {
@@ -929,16 +935,31 @@ test "number literals" {
 }
 
 test "variables" {
-    var PI: f64 = std.math.pi;
-    const testVars = [_]Variable{Variable{ .name = "PI", .address = &PI }};
-    try assertInterpVars("PI", 3.141592653589793, testVars[0..]);
+    {
+        var PI: f64 = std.math.pi;
+        var x: f64 = 40;
+        var y: f64 = 82;
+        var time: f64 = 4;
 
-    var x: f64 = 0;
-    var xPtr = &x;
-    const vars = [_]Variable{Variable.init("x", xPtr)};
+        const testVarsArr = [_]Variable{
+            Variable.init("PI", &PI),
+            Variable.init("x", &x),
+            Variable.init("y", &y),
+            Variable.init("time", &time),
+        };
+        const testVars = testVarsArr[0..];
+        try assertInterpVars("PI", 3.141592653589793, testVars);
+        try assertInterpVars("fract(pow(x, y/time))*400.0", 0, testVars);
+    }
 
-    while (x < 20) {
-        x += 1.5;
-        try assertInterpVars("x", x, vars);
+    {
+        var x: f64 = 0;
+        var xPtr = &x;
+        const vars = [_]Variable{Variable.init("x", xPtr)};
+
+        while (x < 20) {
+            x += 1.5;
+            try assertInterpVars("x", x, vars);
+        }
     }
 }
