@@ -32,13 +32,12 @@ extern fn keyCallback(window: ?*c.GLFWwindow, key: c_int, scancode: c_int, actio
     switch (key) {
         c.GLFW_KEY_ESCAPE => c.glfwSetWindowShouldClose(window, c.GL_TRUE),
         c.GLFW_KEY_R => game.restartGame(t),
-        c.GLFW_KEY_P => game.userTogglePause(t),
+        //c.GLFW_KEY_P => game.userTogglePause(t),
+        c.GLFW_KEY_P => t.cycleEquation(-1),
+        c.GLFW_KEY_N => t.cycleEquation(1),
         else => {},
     }
 }
-
-const WINDOW_WIDTH = 1200;
-const WINDOW_HEIGHT = 750;
 
 extern fn getProcAddress(name: [*c]const u8) ?*c_void {
     var ptr = c.glfwGetProcAddress(name);
@@ -59,6 +58,9 @@ extern fn framebufferSizeCb(window: ?*c.Window, width: c_int, height: c_int) voi
 }
 
 pub fn main() !void {
+    const WINDOW_WIDTH = 1200;
+    const WINDOW_HEIGHT = 750;
+
     _ = c.glfwSetErrorCallback(errorCallback);
 
     if (c.glfwInit() == c.GL_FALSE) {
@@ -120,8 +122,7 @@ pub fn main() !void {
     t.prng = std.rand.DefaultPrng.init(randomSeed);
     t.rand = &t.prng.random;
 
-    game.resetProjection(t);
-    game.restartGame(t);
+    game.init(t);
 
     c.glClearColor(0.0, 0.0, 0.0, 1.0);
     c.glEnable(c.GL_BLEND);
@@ -134,6 +135,7 @@ pub fn main() !void {
     debug_gl.assertNoError();
 
     t.load_resources();
+    debug_gl.assertNoError();
 
     const start_time = c.glfwGetTime();
     var prev_time = start_time;

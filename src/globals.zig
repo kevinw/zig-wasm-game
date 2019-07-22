@@ -17,9 +17,7 @@ pub const Time = struct {
 pub const Input = struct {
     const Self = @This();
 
-    pub fn getKey(keyCode: KeyCode) bool {
-        return c.platformGetKey(keyCode);
-    }
+    pub const getKey = c.platformGetKey;
 };
 
 pub const KeyCode = c.KeyCode;

@@ -50,6 +50,8 @@ pub const Game = struct {
     mojulo: Mojulo,
     quit_requested: bool = false,
 
+    equation_index: i32 = 0,
+
     pub fn is_playing(self: *Self) void {
         return !(self.is_paused || self.game_over || self.is_loading);
     }
@@ -58,6 +60,11 @@ pub const Game = struct {
         const fetch = @import("fetch.zig");
         fetch.fromCellSize("assets/rocket.png", &self.player, 16, 16) catch unreachable;
         fetch.fromCellSize("assets/bullet.png", &self.bullet_sprite, 10, 10) catch unreachable;
+    }
+
+    pub fn cycleEquation(self: *Self, delta: i32) void {
+        self.equation_index = std.math.mod(i32, self.equation_index + delta, equations.len) catch unreachable;
+        setEquation(self);
     }
 };
 
@@ -237,61 +244,59 @@ pub fn didImageLoad() void {
     tetris_state.is_loading = false;
 }
 
-var equation_text: []const u8 = "return fract(pow(x, y/time))*400.0;\n}";
+var equation_text: []const u8 = "fract(pow(x, y/time))*400.0";
 
 comptime {
     _ = @import("tinyexpr.zig");
 }
 
 pub fn update_equation(t: *Game, eq_text: []const u8) void {
-    log("update equation: {}", eq_text);
+    update_equation_text(eq_text);
+    restartGame(t);
+}
 
+pub fn update_equation_text(eq_text: []const u8) void {
     var buf = std.Buffer.init(c.allocator, "") catch unreachable;
     defer buf.deinit();
     @import("tinyglsl.zig").translate(&buf, eq_text) catch |e| {
         warn("{}", e);
         const s = std.fmt.allocPrint(c.allocator, "{{\"error\": true, \"reason\": \"{}\"}}", e) catch unreachable;
         defer c.allocator.free(s);
-        c.onEquationResultJSON(s.ptr, s.len);
+        comptime if (@hasField(c, "onEquationResultJSON")) // TODO: no
+            c.onEquationResultJSON(s.ptr, s.len);
         return;
     };
 
     const glsl = buf.toSliceConst();
-    log("translated:      {}", glsl);
+    //log("translated:      {}", glsl);
 
-    const slices = [_][]const u8{
-        "return (", glsl, ");\n}",
-    };
+    equation_text = std.mem.concat(c.allocator, u8, [_][]const u8{ "return (", glsl, "); }" }) catch unreachable;
+    //log("  set equation_text = {}", equation_text);
+}
 
-    equation_text = std.mem.concat(c.allocator, u8, slices) catch unreachable;
+pub fn init(t: *Game) void {
+    resetProjection(t);
     restartGame(t);
+}
+
+const ASSETS = "../assets/";
+const vert = @embedFile(ASSETS ++ "mojulo_vert.glsl");
+const fragTemplate = @embedFile(ASSETS ++ "mojulo_frag.glsl");
+
+pub fn setEquation(t: *Game) void {
+    const eq = equations[@intCast(usize, t.equation_index)];
+    update_equation_text(eq);
+    const frag = std.mem.concat(c.allocator, u8, [_][]const u8{ fragTemplate, equation_text }) catch unreachable;
+
+    t.test_shader.destroy();
+    t.test_shader = ShaderProgram.create(vert, frag, null);
 }
 
 pub fn restartGame(t: *Game) void {
     t.game_over = false;
     t.is_paused = false;
     t.debug_console.reset();
-
-    const ASSETS = "../assets/";
-    const vert = @embedFile(ASSETS ++ "mojulo_vert.glsl");
-    const fragTemplate = @embedFile(ASSETS ++ "mojulo_frag.glsl");
-    //const frag = std.fmt.allocPrint(c.allocator, fragTemplate) catch unreachable;
-    //pub fn concat(allocator: *Allocator, comptime T: type, slices: []const []const T) ![]T {
-
-    const slices = [_][]const u8{ fragTemplate, equation_text };
-    const frag = std.mem.concat(c.allocator, u8, slices) catch unreachable;
-
-    //const fragTemplate = @embedFile("../assets/mojulo_frag.glsl");
-
-    //const frag = blk: {
-    //    @setEvalBranchQuota(5000);
-    //    const frag = std.fmt.allocPrint(c.allocator, fragTemplate) catch unreachable;
-    //    defer c.allocator.free(frag);
-    //    break :blk frag;
-    //};
-
-    t.test_shader = ShaderProgram.create(vert, frag, null);
-
+    setEquation(t);
     const gs = &t.session;
     gs.init(42, c.allocator);
     _ = prefabs.Player.spawn(gs, prefabs.Player.Params{}) catch unreachable;
