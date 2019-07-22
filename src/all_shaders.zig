@@ -49,8 +49,8 @@ pub const AllShaders = struct {
         , null);
 
         as.primitive_attrib_position = as.primitive.attribLocation("VertexPosition\x00");
-        as.primitive_uniform_mvp = as.primitive.uniformLocation("MVP\x00");
-        as.primitive_uniform_color = as.primitive.uniformLocation("Color\x00");
+        as.primitive_uniform_mvp = as.primitive.uniformLoc("MVP");
+        as.primitive_uniform_color = as.primitive.uniformLoc("Color");
 
         as.texture = ShaderProgram.create(
             \\#version 300 es
@@ -78,9 +78,9 @@ pub const AllShaders = struct {
         as.texture_attrib_tex_coord = as.texture.attribLocation("TexCoord\x00");
         as.texture_attrib_position = as.texture.attribLocation("VertexPosition\x00");
 
-        as.texture_uniform_mvp = as.texture.uniformLocation("MVP\x00");
-        as.texture_uniform_tex = as.texture.uniformLocation("Tex\x00");
-        as.texture_uniform_tint = as.texture.uniformLocation("Tint\x00");
+        as.texture_uniform_mvp = as.texture.uniformLoc("MVP");
+        as.texture_uniform_tex = as.texture.uniformLoc("Tex");
+        as.texture_uniform_tint = as.texture.uniformLoc("Tint");
 
         debug_gl.assertNoError();
 
@@ -94,7 +94,7 @@ pub const AllShaders = struct {
 };
 
 pub const ShaderProgram = struct {
-    program_id: c.GLuint,
+    program_id: c.GLuint = 0,
     vertex_id: c.GLuint,
     fragment_id: c.GLuint,
     maybe_geometry_id: ?c.GLuint,
@@ -169,7 +169,7 @@ pub const ShaderProgram = struct {
     }
 
     pub fn setUniformVec4ByName(sp: ShaderProgram, name: []const u8, value: Vec4) void {
-        const location = sp.uniformLocation(name ++ "\x00");
+        const location = sp.uniformLoc(name);
         if (location != -1) {
             sp.setUniformVec4(location, value);
         }
@@ -180,7 +180,7 @@ pub const ShaderProgram = struct {
     }
 
     pub fn setUniformMat4x4ByName(sp: ShaderProgram, name: []const u8, value: Mat4x4) void {
-        const location = sp.uniformLocation(name ++ "\x00");
+        const location = sp.uniformLoc(name);
         if (location != -1) {
             c.glUniformMatrix4fv(location, 1, c.GL_FALSE, value.data[0][0..].ptr);
         }
@@ -206,15 +206,19 @@ pub const ShaderProgram = struct {
         if (sp.maybe_geometry_id) |geo_id| {
             c.glDetachShader(sp.program_id, geo_id);
         }
-        c.glDetachShader(sp.program_id, sp.fragment_id);
-        c.glDetachShader(sp.program_id, sp.vertex_id);
+
+        if (sp.program_id > 0) {
+            c.glDetachShader(sp.program_id, sp.fragment_id);
+            c.glDetachShader(sp.program_id, sp.vertex_id);
+        }
 
         if (sp.maybe_geometry_id) |geo_id| {
             c.glDeleteShader(geo_id);
         }
-        c.glDeleteShader(sp.fragment_id);
-        c.glDeleteShader(sp.vertex_id);
+        if (sp.fragment_id > 0) c.glDeleteShader(sp.fragment_id);
+        if (sp.vertex_id > 0) c.glDeleteShader(sp.vertex_id);
 
-        c.glDeleteProgram(sp.program_id);
+        if (sp.program_id > 0)
+            c.glDeleteProgram(sp.program_id);
     }
 };
