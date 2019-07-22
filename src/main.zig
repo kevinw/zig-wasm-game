@@ -54,6 +54,10 @@ fn getKeyCode(keyCode: KeyCode) KeyCode {
     return @intCast(KeyCode, scancode);
 }
 
+extern fn framebufferSizeCb(window: ?*c.Window, width: c_int, height: c_int) void {
+    c.glViewport(0, 0, width, height);
+}
+
 pub fn main() !void {
     _ = c.glfwSetErrorCallback(errorCallback);
 
@@ -66,15 +70,18 @@ pub fn main() !void {
     c.glfwWindowHint(c.GLFW_CONTEXT_VERSION_MINOR, 2);
     c.glfwWindowHint(c.GLFW_OPENGL_FORWARD_COMPAT, c.GL_TRUE);
     c.glfwWindowHint(c.GLFW_OPENGL_DEBUG_CONTEXT, debug_gl.is_on);
+    c.glfwWindowHint(c.GLFW_SAMPLES, 4);
     c.glfwWindowHint(c.GLFW_OPENGL_PROFILE, c.GLFW_OPENGL_CORE_PROFILE);
     c.glfwWindowHint(c.GLFW_DEPTH_BITS, 0);
     c.glfwWindowHint(c.GLFW_STENCIL_BITS, 8);
-    c.glfwWindowHint(c.GLFW_RESIZABLE, c.GL_FALSE);
+    c.glfwWindowHint(c.GLFW_RESIZABLE, c.GL_TRUE);
 
     var window = c.glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, c"Game", null, null) orelse {
         panic("unable to create window\n");
     };
     defer c.glfwDestroyWindow(window);
+
+    _ = c.glfwSetFramebufferSizeCallback(window, framebufferSizeCb);
 
     _ = c.glfwSetKeyCallback(window, keyCallback);
     c.glfwMakeContextCurrent(window);
