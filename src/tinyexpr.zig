@@ -512,7 +512,9 @@ fn base(s: *State) EvalError!*Expr {
             }
 
             try s.nextToken();
-            return s.createFuncWithSlice(f.fnPtr(), parameters.toSlice());
+
+            const heapSlice = try std.mem.dupe(s.allocator, *Expr, parameters.toSlice());
+            return s.createFuncWithSlice(f.fnPtr(), heapSlice);
         },
         .Open => {
             try s.nextToken();
