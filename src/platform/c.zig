@@ -93,5 +93,6 @@ pub fn linkShaderProgram(vertex_id: GLuint, fragment_id: GLuint, geometry_id: ?G
     glGetProgramiv(program_id, GL_INFO_LOG_LENGTH, &error_size);
     const message = allocator.alloc(u8, @intCast(usize, error_size)) catch unreachable;
     glGetProgramInfoLog(program_id, error_size, &error_size, message.ptr);
-    panic("Error linking shader program: {}\n", message.ptr);
+
+    panic("Error linking shader program: {}\n", message.ptr[0..@intCast(usize, error_size)]);
 }
