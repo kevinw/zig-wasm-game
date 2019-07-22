@@ -3,5 +3,6 @@ tetris
 node_modules/
 output.txt
 
+main_web.wasm
 main_web.h
 *.o

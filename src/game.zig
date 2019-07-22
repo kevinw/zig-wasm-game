@@ -56,7 +56,7 @@ pub const Game = struct {
 
     pub fn load_resources(self: *Self) void {
         const fetch = @import("fetch.zig");
-        fetch.fromCellSize("assets/face.png", &self.player, 48, 48) catch unreachable;
+        fetch.fromCellSize("assets/rocket.png", &self.player, 16, 16) catch unreachable;
         fetch.fromCellSize("assets/bullet.png", &self.bullet_sprite, 10, 10) catch unreachable;
     }
 };
@@ -122,8 +122,7 @@ fn drawCenteredText(t: *Game, text: []const u8, scale: f32, color: Vec4) void {
     drawTextWithColor(t, text, draw_left, draw_top, scale, color);
 }
 
-fn sprite_matrix(proj: Mat4x4, sprite_width: i32, pos: Vec3) Mat4x4 {
-    const size = 1;
+fn sprite_matrix(proj: Mat4x4, pos: Vec3, size: f32) Mat4x4 {
     const model = mat4x4_identity.translate(pos.x, pos.y, 0.0).scale(size, size, 0.0);
     const view = mat4x4_identity.translate(0, 0, 0);
     const mvp = proj.mult(view).mult(model);
@@ -149,9 +148,9 @@ pub fn draw(t: *Game) void {
             if (!object.is_active) continue;
             const sprite = object.data;
             if (sprite.spritesheet) |spritesheet| {
-                spritesheet.draw(t.all_shaders, sprite.index, sprite_matrix(t.projection, 48, sprite.pos), color);
+                spritesheet.draw(t.all_shaders, sprite.index, sprite_matrix(t.projection, sprite.pos, 4.0), color);
             } else {
-                fillRect(t, vec4(1, 0, 1, 1), sprite.pos.x, sprite.pos.y, 8, 8);
+                fillRect(t, vec4(1, 0, 1, 1), sprite.pos.x, sprite.pos.y, 16, 16);
             }
         }
     }
