@@ -73,7 +73,7 @@ pub fn initShader(source: []const u8, name: []const u8, kind: GLenum) GLuint {
 
     const message = allocator.alloc(u8, @intCast(usize, error_size)) catch unreachable;
     glGetShaderInfoLog(shader_id, error_size, &error_size, message.ptr);
-    panic("Error compiling {} shader:\n{}\n", name, message.ptr);
+    panic("Error compiling {} shader:\n{}\n", name, message.ptr[0..@intCast(usize, error_size)]);
 }
 
 pub fn linkShaderProgram(vertex_id: GLuint, fragment_id: GLuint, geometry_id: ?GLuint) GLuint {
