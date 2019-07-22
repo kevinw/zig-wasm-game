@@ -1,4 +1,5 @@
 - move most stuff from main.zig into main_native.zig
+- how to easily apply FXAA to the equation quad? or do super sampling?
 - make main.zig forward functions to main_web or main_native
 - the real pain for development is that lack of a quick GUI like html provides
     - solution is to try imgui or nucklear or ? and make the UI with that. web becomes fullscreen just like native

@@ -48,7 +48,7 @@ fn getKeyCode(keyCode: KeyCode) KeyCode {
     //const keyCodeCInt = @intCast(c_int, keyCode);
     const scancode = c.glfwGetKeyScancode(keyCode);
     if (scancode == -1)
-        std.debug.panic("cannot find scancode for {} {}", keyCode, keyCodeCInt);
+        panic("cannot find scancode for {} {}", keyCode, keyCodeCInt);
 
     return @intCast(KeyCode, scancode);
 }
@@ -63,9 +63,7 @@ pub fn main() !void {
 
     _ = c.glfwSetErrorCallback(errorCallback);
 
-    if (c.glfwInit() == c.GL_FALSE) {
-        panic("GLFW init failure\n");
-    }
+    if (c.glfwInit() == c.GL_FALSE) panic("GLFW init failure\n");
     defer c.glfwTerminate();
 
     c.glfwWindowHint(c.GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -84,7 +82,6 @@ pub fn main() !void {
     defer c.glfwDestroyWindow(window);
 
     _ = c.glfwSetFramebufferSizeCallback(window, framebufferSizeCb);
-
     _ = c.glfwSetKeyCallback(window, keyCallback);
     c.glfwMakeContextCurrent(window);
     c.glfwSwapInterval(1);

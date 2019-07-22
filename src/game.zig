@@ -103,6 +103,13 @@ fn fillRectShader(s: *ShaderProgram, t: *Game, x: f32, y: f32, w: f32, h: f32) v
     s.setUniformMat4x4(s.uniformLoc("MVP"), t.projection.mult(model));
     s.setUniformFloat(s.uniformLoc("time"), Time.frame_count);
 
+    var gs = t.session;
+    if (gs.findFirstObject(Player)) |player| {
+        if (gs.find(player.entity_id, Sprite)) |playerSprite| {
+            s.setUniformVec3(s.uniformLoc("camPos"), playerSprite.pos.scale(0.3));
+        }
+    }
+
     {
         c.glBindBuffer(c.GL_ARRAY_BUFFER, t.static_geometry.rect_2d_vertex_buffer);
         const attribPos = s.attribLoc("VertexPosition");
@@ -188,14 +195,11 @@ pub fn drawText(t: *const Game, text: []const u8, left: i32, top: i32, size: f32
 
 pub fn drawTextWithColor(t: *const Game, text: []const u8, left: i32, top: i32, size: f32, color: Vec4) void {
     for (text) |col, i| {
-        if (col <= '~') {
-            const char_left = @intToFloat(f32, left) + @intToFloat(f32, i * font_char_width) * size;
-            const model = mat4x4_identity.translate(char_left, @intToFloat(f32, top), 0.0).scale(size, size, 0.0);
-            const mvp = t.projection.mult(model);
-            t.font.draw(t.all_shaders, col, mvp, color);
-        } else {
-            unreachable;
-        }
+        if (col > '~') unreachable;
+        const char_left = @intToFloat(f32, left) + @intToFloat(f32, i * font_char_width) * size;
+        const model = mat4x4_identity.translate(char_left, @intToFloat(f32, top), 0.0).scale(size, size, 0.0);
+        const mvp = t.projection.mult(model);
+        t.font.draw(t.all_shaders, col, mvp, color);
     }
 }
 
@@ -209,7 +213,6 @@ fn drawPieceWithColor(t: *Game, piece: Piece, left: i32, top: i32, rot: usize, c
             if (!is_filled) continue;
             const abs_x = @intToFloat(f32, left + @intCast(i32, x) * cell_size);
             const abs_y = @intToFloat(f32, top + @intCast(i32, y) * cell_size);
-
             fillRect(t, color, abs_x, abs_y, cell_size, cell_size);
         }
     }

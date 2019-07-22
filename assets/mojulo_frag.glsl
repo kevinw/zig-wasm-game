@@ -4,6 +4,7 @@ precision mediump float;
 in vec2 FragTexCoord;
 out vec4 FragColor;
 uniform vec4 Color;
+uniform vec3 camPos;
 uniform float time;
 
 float randFromVec2(vec2 co){
@@ -13,6 +14,7 @@ float randFromVec2(vec2 co){
 float rand() { return randFromVec2(FragTexCoord); }
 
 float equation();
+
 
 void main(void) {
     // OUTPUT
@@ -31,8 +33,8 @@ void main(void) {
 }
 
 float equation() {
-    float x = FragTexCoord.x * 100.0;
-    float y = FragTexCoord.y * 100.0;
+    float x = FragTexCoord.x * 100.0 + camPos.x;
+    float y = FragTexCoord.y * 100.0 + camPos.y;
     float A = atan(y, x);
     float r = sqrt(x * x + y * y);
 

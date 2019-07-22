@@ -118,9 +118,8 @@ pub const ShaderProgram = struct {
             c.glGetAttribLocation(sp.program_id, name.ptr, name.len - 1)
         else
             c.glGetAttribLocation(sp.program_id, name.ptr);
-        if (id == -1) {
-            c.abortReason("invalid attrib: {}\n", name);
-        }
+
+        if (id == -1) c.abortReason("invalid attrib: {}\n", name);
         return id;
     }
 
@@ -132,9 +131,7 @@ pub const ShaderProgram = struct {
         else
             c.glGetUniformLocation(sp.program_id, name.ptr);
 
-        if (id == -1) {
-            c.abortReason("invalid uniform: {}\n", name);
-        }
+        if (id == -1) c.abortReason("invalid uniform: {}\n", name);
 
         return id;
     }
@@ -155,7 +152,8 @@ pub const ShaderProgram = struct {
         if (c.is_web) {
             c.glUniform3fv(uniform_id, value.x, value.y, value.z);
         } else {
-            c.glUniform3fv(uniform_id, 1, value.ptr());
+            var v = value;
+            c.glUniform3fv(uniform_id, 1, v.ptr());
         }
     }
 
@@ -170,9 +168,7 @@ pub const ShaderProgram = struct {
 
     pub fn setUniformVec4ByName(sp: ShaderProgram, name: []const u8, value: Vec4) void {
         const location = sp.uniformLoc(name);
-        if (location != -1) {
-            sp.setUniformVec4(location, value);
-        }
+        if (location != -1) sp.setUniformVec4(location, value);
     }
 
     pub fn setUniformMat4x4(sp: ShaderProgram, uniform_id: c.GLint, value: Mat4x4) void {

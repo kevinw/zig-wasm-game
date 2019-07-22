@@ -152,6 +152,10 @@ pub const Vec3 = struct {
     y: f32,
     z: f32,
 
+    pub fn ptr(self: *Vec3) *f32 {
+        return &self.x;
+    }
+
     pub fn normalize(v: Vec3) Vec3 {
         return v.scale(1.0 / std.math.sqrt(v.dot(v)));
     }
