@@ -11,6 +11,7 @@ pub extern fn glBlendFunc(_: c_uint, _: c_uint) void;
 pub extern fn glClear(_: c_uint) void;
 pub extern fn glGetAttribLocation(_: c_uint, _: [*]const u8, _: c_uint) c_int;
 pub extern fn glGetUniformLocation(_: c_uint, _: [*]const u8, _: c_uint) c_int;
+pub extern fn glUniform3fv(_: c_int, _: f32, _: f32, _: f32) void;
 pub extern fn glUniform4fv(_: c_int, _: f32, _: f32, _: f32, _: f32) void;
 pub extern fn glUniform1i(_: c_int, _: c_int) void;
 pub extern fn glUniform1f(_: c_int, _: f32) void;

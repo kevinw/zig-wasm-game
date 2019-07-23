@@ -37,7 +37,8 @@ pub const Mojulo = struct {
         const entity_id = gs.spawn();
         errdefer gs.undoSpawn(entity_id);
 
-        try gs.addComponent(entity_id, c.Sprite{ .pos = pos });
+        try gs.addComponent(entity_id, c.Mojulo{});
+        try gs.addComponent(entity_id, c.Transform{});
 
         return entity_id;
     }

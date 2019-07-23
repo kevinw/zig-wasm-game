@@ -33,7 +33,7 @@ pub const Game = struct {
     debug_console: DebugConsole,
     all_shaders: AllShaders,
     static_geometry: static_geometry.StaticGeometry,
-    test_shader: ShaderProgram,
+    //test_shader: ShaderProgram,
     projection: Mat4x4,
     prng: std.rand.DefaultPrng,
     rand: *std.rand.Random,
@@ -47,7 +47,7 @@ pub const Game = struct {
     level: i32,
     is_paused: bool,
     is_loading: bool,
-    mojulo: Mojulo,
+    mojulo: *Mojulo,
     quit_requested: bool = false,
 
     equation_index: i32 = 0,
@@ -168,18 +168,29 @@ pub fn draw(t: *Game) void {
     } else {
         const w = @intToFloat(f32, t.framebuffer_width);
         const h = @intToFloat(f32, t.framebuffer_height);
-        fillRectShader(&t.test_shader, t, 0, 0, w, h);
+        //fillRectShader(&t.test_shader, t, 0, 0, w, h);
+        //fillRectShader(&t.mojulo.shader, t, 0, 0, w, h);
         //drawCenteredText(t, "play", 4.0, vec4(1, 1, 1, 0.5));
         const color = vec4(1, 1, 1, 1);
 
-        var it = t.session.iter(Sprite);
-        while (it.next()) |object| {
-            if (!object.is_active) continue;
-            const sprite = object.data;
-            if (sprite.spritesheet) |spritesheet| {
-                spritesheet.draw(t.all_shaders, sprite.index, sprite_matrix(t.projection, sprite.pos, 4.0), color);
-            } else {
-                fillRect(t, vec4(1, 0, 1, 1), sprite.pos.x, sprite.pos.y, 16, 16);
+        {
+            var it = t.session.iter(Sprite);
+            while (it.next()) |object| {
+                if (!object.is_active) continue;
+                const sprite = object.data;
+                if (sprite.spritesheet) |spritesheet| {
+                    spritesheet.draw(t.all_shaders, sprite.index, sprite_matrix(t.projection, sprite.pos, 4.0), color);
+                } else {
+                    fillRect(t, vec4(1, 0, 1, 1), sprite.pos.x, sprite.pos.y, 16, 16);
+                }
+            }
+        }
+        {
+            var it = t.session.iter(Mojulo);
+            while (it.next()) |object| {
+                if (!object.is_active) continue;
+                var mojulo = object.data;
+                if (mojulo.shader) |*shader| fillRectShader(shader, t, 0, 0, w, h);
             }
         }
     }
@@ -288,11 +299,14 @@ const fragTemplate = @embedFile(ASSETS ++ "mojulo_frag.glsl");
 
 pub fn setEquation(t: *Game) void {
     const eq = equations[@intCast(usize, t.equation_index)];
-    update_equation_text(eq);
-    const frag = std.mem.concat(c.allocator, u8, [_][]const u8{ fragTemplate, equation_text }) catch unreachable;
 
-    t.test_shader.destroy();
-    t.test_shader = ShaderProgram.create(vert, frag, null);
+    //update_equation_text(eq);
+    //const frag = std.mem.concat(c.allocator, u8, [_][]const u8{ fragTemplate, equation_text }) catch unreachable;
+
+    //t.test_shader.destroy();
+    //t.test_shader = ShaderProgram.create(vert, frag, null);
+
+    t.mojulo.setEquation(eq) catch unreachable;
 }
 
 pub fn restartGame(t: *Game) void {
@@ -303,7 +317,12 @@ pub fn restartGame(t: *Game) void {
     const gs = &t.session;
     gs.init(42, c.allocator);
     _ = prefabs.Player.spawn(gs, prefabs.Player.Params{}) catch unreachable;
-    const mojulo_id = prefabs.Mojulo.spawn(gs, vec3(20, 80, 0));
+
+    const mojulo_id = prefabs.Mojulo.spawn(gs, vec3(20, 80, 0)) catch unreachable;
+    if (gs.find(mojulo_id, Mojulo)) |mojulo| {
+        t.mojulo = mojulo;
+        mojulo.setEquation("x*y*time") catch unreachable;
+    }
 
     if (t.session.findFirst(Sprite)) |spr| {
         spr.spritesheet = &t.player;

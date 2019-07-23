@@ -45,9 +45,11 @@ export fn onKeyDown(keyCode: c_int, state: u8, repeat: c_int) void {
     if (repeat > 0) return;
     const t = GameState();
     switch (keyCode) {
-        c.KEY_ESCAPE, c.KEY_P => game.userTogglePause(t),
+        c.KEY_ESCAPE => game.userTogglePause(t),
         c.KEY_R => game.restartGame(t),
         c.KEY_L => game.logMessage(t),
+        c.KEY_N => t.cycleEquation(1),
+        c.KEY_P => t.cycleEquation(-1),
         else => {},
     }
 
@@ -77,8 +79,8 @@ export fn onFetch(width: c_uint, height: c_uint, bytes_ptr: c_uint, bytes_len: c
 
 export fn onInit(width: c_uint, height: c_uint) void {
     const t = GameState();
-    t.framebuffer_width = 800;
-    t.framebuffer_height = 450;
+    t.framebuffer_width = @intCast(c_int, width);
+    t.framebuffer_height = @intCast(c_int, height);
 
     c.glGenVertexArrays(1, &vertex_array_object);
     c.glBindVertexArray(vertex_array_object);

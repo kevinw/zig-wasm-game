@@ -5,6 +5,7 @@ pub const Mojulo = @import("components/mojulo.zig").Mojulo;
 pub const Mover = @import("components/mover.zig").Mover;
 pub const Player = @import("components/player.zig").Player;
 pub const Sprite = @import("components/sprite.zig").Sprite;
+pub const Transform = @import("components/transform.zig").Transform;
 usingnamespace @import("session.zig");
 
 const Destroy_Timer_SystemData = struct {
@@ -107,6 +108,20 @@ inline fn Sprite_think(gs: *GameSession, self: Sprite_SystemData) bool {
     return @inlineCall(mod.update, gs, self.sprite);
 }
         
+usingnamespace @import("session.zig");
+
+const Transform_SystemData = struct {
+    id: EntityId,
+    transform: *Transform,
+};
+
+pub const run_Transform = GameSession.buildSystem(Transform_SystemData, Transform_think);
+
+inline fn Transform_think(gs: *GameSession, self: Transform_SystemData) bool {
+    const mod = @import("components/transform.zig");
+    return @inlineCall(mod.update, gs, self.transform);
+}
+        
 pub fn run_ALL(gs: *GameSession) void {
     run_Destroy_Timer(gs);
     run_Gun(gs);
@@ -115,4 +130,5 @@ pub fn run_ALL(gs: *GameSession) void {
     run_Mover(gs);
     run_Player(gs);
     run_Sprite(gs);
+    run_Transform(gs);
 }

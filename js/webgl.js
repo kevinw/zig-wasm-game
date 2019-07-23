@@ -3,7 +3,7 @@ let webgl_fallback = false;
 let gl;
 
 let webglOptions = {
-  alpha: true, //Boolean that indicates if the canvas contains an alpha buffer.
+  alpha: false, //Boolean that indicates if the canvas contains an alpha buffer.
   antialias: true,  //Boolean that indicates whether or not to perform anti-aliasing.
   depth: 32,  //Boolean that indicates that the drawing buffer has a depth buffer of at least 16 bits.
   failIfMajorPerformanceCaveat: false,  //Boolean that indicates if a context will be created if the system performance is low.
@@ -107,6 +107,7 @@ const glGetUniformLocation = (programId, namePtr, nameLen) => {
   glUniformLocations.push(gl.getUniformLocation(glPrograms[programId], readCharStr(namePtr, nameLen)));
   return glUniformLocations.length - 1;
 };
+const glUniform3fv = (locationId, x, y, z) => gl.uniform3fv(glUniformLocations[locationId], [x, y, z]);
 const glUniform4fv = (locationId, x, y, z, w) => gl.uniform4fv(glUniformLocations[locationId], [x, y, z, w]);
 const glUniformMatrix4fv = (locationId, dataLen, transpose, dataPtr) => {
   const floats = new Float32Array(memory.buffer, dataPtr, dataLen * 16);
@@ -223,6 +224,7 @@ var webgl = {
   glClear,
   glGetAttribLocation,
   glGetUniformLocation,
+  glUniform3fv,
   glUniform4fv,
   glUniformMatrix4fv,
   glUniform1i,

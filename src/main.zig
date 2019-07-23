@@ -32,7 +32,6 @@ extern fn keyCallback(window: ?*c.GLFWwindow, key: c_int, scancode: c_int, actio
     switch (key) {
         c.GLFW_KEY_ESCAPE => c.glfwSetWindowShouldClose(window, c.GL_TRUE),
         c.GLFW_KEY_R => game.restartGame(t),
-        //c.GLFW_KEY_P => game.userTogglePause(t),
         c.GLFW_KEY_P => t.cycleEquation(-1),
         c.GLFW_KEY_N => t.cycleEquation(1),
         else => {},

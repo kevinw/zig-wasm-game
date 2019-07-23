@@ -26,6 +26,8 @@ pub fn build(b: *Builder) void {
 
     addEnvIncludePaths(exe); // for windows headers
 
+    exe.addIncludeDir("lib");
+
     exe.addIncludeDir("lib/glad/include");
     exe.addCSourceFile("lib/glad/src/glad.c", [_][]const u8{"-std=c99"});
 
@@ -33,6 +35,10 @@ pub fn build(b: *Builder) void {
 
     exe.addLibPath("../glfw/zig-cache/lib");
     exe.addIncludeDir("../glfw/include");
+
+    // nuklear
+    //exe.addCSourceFile("lib/nuklear_glfw3.c", [_][]const u8{"-std=c99"});
+    //exe.addIncludeDir("../nuklear");
 
     // for libraries installed by vcpkg
     exe.addIncludeDir(VCPKG_PATH ++ "include");

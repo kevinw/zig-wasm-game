@@ -144,7 +144,7 @@ pub const ShaderProgram = struct {
         c.glUniform1f(uniform_id, value);
     }
 
-    pub fn setUniformFloatByName(sp: ShaderProgram, name: []const u8, value: f32) void {
+    pub fn setUniformFloatByName(sp: ShaderProgram, comptime name: []const u8, value: f32) void {
         sp.setUniformFloat(sp.uniformLoc(name));
     }
 
@@ -166,7 +166,7 @@ pub const ShaderProgram = struct {
         }
     }
 
-    pub fn setUniformVec4ByName(sp: ShaderProgram, name: []const u8, value: Vec4) void {
+    pub fn setUniformVec4ByName(sp: ShaderProgram, comptime name: []const u8, value: Vec4) void {
         const location = sp.uniformLoc(name);
         if (location != -1) sp.setUniformVec4(location, value);
     }
@@ -175,7 +175,7 @@ pub const ShaderProgram = struct {
         c.glUniformMatrix4fv(uniform_id, 1, c.GL_FALSE, value.data[0][0..].ptr);
     }
 
-    pub fn setUniformMat4x4ByName(sp: ShaderProgram, name: []const u8, value: Mat4x4) void {
+    pub fn setUniformMat4x4ByName(sp: ShaderProgram, comptime name: []const u8, value: Mat4x4) void {
         const location = sp.uniformLoc(name);
         if (location != -1) {
             c.glUniformMatrix4fv(location, 1, c.GL_FALSE, value.data[0][0..].ptr);

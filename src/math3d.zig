@@ -152,6 +152,9 @@ pub const Vec3 = struct {
     y: f32,
     z: f32,
 
+    pub const zero = Vec3{ .x = 0, .y = 0, .z = 0 };
+    pub const one = Vec3{ .x = 1, .y = 1, .z = 1 };
+
     pub fn ptr(self: *Vec3) *f32 {
         return &self.x;
     }

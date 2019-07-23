@@ -14,5 +14,6 @@ pub const GameSession = gbe.Session(struct {
     Mover: gbe.ComponentList(Mover),
     Player: gbe.ComponentList(Player),
     Sprite: gbe.ComponentList(Sprite),
+    Transform: gbe.ComponentList(Transform),
 });
     

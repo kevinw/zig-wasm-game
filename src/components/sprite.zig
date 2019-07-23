@@ -1,9 +1,8 @@
 usingnamespace @import("../globals.zig");
 usingnamespace @import("../session.zig");
-usingnamespace @import("../math3d.zig");
 const Spritesheet = @import("../spritesheet.zig").Spritesheet;
 
-pub const Sprite = struct { // !component
+pub const Sprite = struct {
     pos: Vec3 = vec3(0, 0, 0),
     time: f32 = 0,
     index: u16 = 0,
