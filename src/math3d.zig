@@ -99,7 +99,7 @@ pub const Mat4x4 = struct {
     }
 
     pub fn translateByVec(m: Mat4x4, v: Vec3) Mat4x4 {
-        return m.translate(v.data[0], v.data[1], v.data[2]);
+        return m.translate(v.x, v.y, v.z);
     }
 
     /// Builds a scale 4 * 4 matrix created from 3 scalars.

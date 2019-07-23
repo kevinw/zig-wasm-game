@@ -131,7 +131,7 @@ pub const ShaderProgram = struct {
         else
             c.glGetUniformLocation(sp.program_id, name.ptr);
 
-        if (id == -1) c.abortReason("invalid uniform: {}\n", name);
+        //if (id == -1) c.abortReason("invalid uniform: {}\n", name);
 
         return id;
     }
@@ -145,7 +145,9 @@ pub const ShaderProgram = struct {
     }
 
     pub fn setUniformFloatByName(sp: ShaderProgram, comptime name: []const u8, value: f32) void {
-        sp.setUniformFloat(sp.uniformLoc(name));
+        const uniformId = sp.uniformLoc(name);
+        if (uniformId != -1)
+            sp.setUniformFloat(uniformId, value);
     }
 
     pub fn setUniformVec3(sp: ShaderProgram, uniform_id: c.GLint, value: math3d.Vec3) void {
@@ -177,9 +179,7 @@ pub const ShaderProgram = struct {
 
     pub fn setUniformMat4x4ByName(sp: ShaderProgram, comptime name: []const u8, value: Mat4x4) void {
         const location = sp.uniformLoc(name);
-        if (location != -1) {
-            c.glUniformMatrix4fv(location, 1, c.GL_FALSE, value.data[0][0..].ptr);
-        }
+        if (location != -1) c.glUniformMatrix4fv(location, 1, c.GL_FALSE, value.data[0][0..].ptr);
     }
 
     pub fn create(

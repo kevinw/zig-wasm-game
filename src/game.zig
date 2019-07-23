@@ -34,11 +34,15 @@ pub const Game = struct {
     all_shaders: AllShaders,
     static_geometry: static_geometry.StaticGeometry,
     //test_shader: ShaderProgram,
+
     projection: Mat4x4,
+    view: Mat4x4,
+
     prng: std.rand.DefaultPrng,
     rand: *std.rand.Random,
     game_over: bool,
     font: Spritesheet,
+    player_sprite: *Sprite,
     player: Spritesheet,
     bullet_sprite: Spritesheet,
     ghost_y: i32,
@@ -47,7 +51,7 @@ pub const Game = struct {
     level: i32,
     is_paused: bool,
     is_loading: bool,
-    mojulo: *Mojulo,
+    mojulo: ?*Mojulo,
     quit_requested: bool = false,
 
     equation_index: i32 = 0,
@@ -100,13 +104,13 @@ fn fillRectShader(s: *ShaderProgram, t: *Game, x: f32, y: f32, w: f32, h: f32) v
     s.bind();
 
     const model = mat4x4_identity.translate(x, y, 0.0).scale(w, h, 0.0);
-    s.setUniformMat4x4(s.uniformLoc("MVP"), t.projection.mult(model));
-    s.setUniformFloat(s.uniformLoc("time"), Time.frame_count);
+    s.setUniformMat4x4ByName("MVP", t.projection.mult(t.view.mult(model)));
+    s.setUniformFloatByName("time", Time.frame_count);
 
     var gs = t.session;
     if (gs.findFirstObject(Player)) |player| {
         if (gs.find(player.entity_id, Sprite)) |playerSprite| {
-            s.setUniformVec3(s.uniformLoc("camPos"), playerSprite.pos.scale(0.3));
+            //s.setUniformVec3(s.uniformLoc("camPos"), playerSprite.pos.scale(0.3));
         }
     }
 
@@ -139,7 +143,7 @@ fn fillRectMvp(t: *Game, color: Vec4, mvp: Mat4x4) void {
 
 fn fillRect(t: *Game, color: Vec4, x: f32, y: f32, w: f32, h: f32) void {
     const model = mat4x4_identity.translate(x, y, 0.0).scale(w, h, 0.0);
-    const mvp = t.projection.mult(model);
+    const mvp = t.projection.mult(t.view.mult(model));
     fillRectMvp(t, color, mvp);
 }
 
@@ -151,9 +155,8 @@ fn drawCenteredText(t: *Game, text: []const u8, scale: f32, color: Vec4) void {
     drawTextWithColor(t, text, draw_left, draw_top, scale, color);
 }
 
-fn sprite_matrix(proj: Mat4x4, pos: Vec3, size: f32) Mat4x4 {
+fn sprite_matrix(proj: Mat4x4, view: Mat4x4, pos: Vec3, size: f32) Mat4x4 {
     const model = mat4x4_identity.translate(pos.x, pos.y, 0.0).scale(size, size, 0.0);
-    const view = mat4x4_identity.translate(0, 0, 0);
     const mvp = proj.mult(view).mult(model);
     return mvp;
 }
@@ -173,24 +176,31 @@ pub fn draw(t: *Game) void {
         //drawCenteredText(t, "play", 4.0, vec4(1, 1, 1, 0.5));
         const color = vec4(1, 1, 1, 1);
 
+        // draw mojulos
+        {
+            var it = t.session.iter(Mojulo);
+            while (it.next()) |object| {
+                if (!object.is_active) continue;
+                var mojulo = object.data;
+                if (mojulo.shader) |*shader| {
+                    if (t.session.find(object.entity_id, Transform)) |xform| {
+                        const p = xform.position;
+                        fillRectShader(shader, t, p.x, p.y, w, h);
+                    }
+                }
+            }
+        }
+
         {
             var it = t.session.iter(Sprite);
             while (it.next()) |object| {
                 if (!object.is_active) continue;
                 const sprite = object.data;
                 if (sprite.spritesheet) |spritesheet| {
-                    spritesheet.draw(t.all_shaders, sprite.index, sprite_matrix(t.projection, sprite.pos, 4.0), color);
+                    spritesheet.draw(t.all_shaders, sprite.index, sprite_matrix(t.projection, t.view, sprite.pos, 4.0), color);
                 } else {
                     fillRect(t, vec4(1, 0, 1, 1), sprite.pos.x, sprite.pos.y, 16, 16);
                 }
-            }
-        }
-        {
-            var it = t.session.iter(Mojulo);
-            while (it.next()) |object| {
-                if (!object.is_active) continue;
-                var mojulo = object.data;
-                if (mojulo.shader) |*shader| fillRectShader(shader, t, 0, 0, w, h);
             }
         }
     }
@@ -209,7 +219,7 @@ pub fn drawTextWithColor(t: *const Game, text: []const u8, left: i32, top: i32, 
         if (col > '~') unreachable;
         const char_left = @intToFloat(f32, left) + @intToFloat(f32, i * font_char_width) * size;
         const model = mat4x4_identity.translate(char_left, @intToFloat(f32, top), 0.0).scale(size, size, 0.0);
-        const mvp = t.projection.mult(model);
+        const mvp = t.projection.mult(t.view.mult(model));
         t.font.draw(t.all_shaders, col, mvp, color);
     }
 }
@@ -237,6 +247,9 @@ pub fn nextFrame(t: *Game, elapsed: f64) void {
     Time._update_next_frame(elapsed);
 
     @import("components_auto.zig").run_ALL(&t.session);
+
+    const offset = t.player_sprite.pos.multScalar(-1).add(vec3(@intToFloat(f32, t.framebuffer_width) * 0.5, @intToFloat(f32, t.framebuffer_height) * 0.5, 0));
+    t.view = mat4x4_identity.translateByVec(offset);
     t.debug_console.update(elapsed);
     t.session.applyRemovals();
 
@@ -306,23 +319,35 @@ pub fn setEquation(t: *Game) void {
     //t.test_shader.destroy();
     //t.test_shader = ShaderProgram.create(vert, frag, null);
 
-    t.mojulo.setEquation(eq) catch unreachable;
+    t.mojulo.?.setEquation(eq) catch unreachable;
 }
 
 pub fn restartGame(t: *Game) void {
     t.game_over = false;
     t.is_paused = false;
     t.debug_console.reset();
-    setEquation(t);
     const gs = &t.session;
     gs.init(42, c.allocator);
-    _ = prefabs.Player.spawn(gs, prefabs.Player.Params{}) catch unreachable;
 
-    const mojulo_id = prefabs.Mojulo.spawn(gs, vec3(20, 80, 0)) catch unreachable;
+    const player_id = prefabs.Player.spawn(gs, prefabs.Player.Params{}) catch unreachable;
+    if (gs.find(player_id, Sprite)) |player_sprite| {
+        t.player_sprite = player_sprite;
+    }
+
+    const mojulo_id = prefabs.Mojulo.spawn(gs, vec3(0, 0, 0)) catch unreachable;
     if (gs.find(mojulo_id, Mojulo)) |mojulo| {
+        log("created mojulo {}", mojulo_id);
         t.mojulo = mojulo;
         mojulo.setEquation("x*y*time") catch unreachable;
     }
+
+    const mojulo_id_2 = prefabs.Mojulo.spawn(gs, vec3(-@intToFloat(f32, t.framebuffer_width), 80, 0)) catch unreachable;
+    if (gs.find(mojulo_id_2, Mojulo)) |mojulo| {
+        log("created mojulo {}", mojulo_id_2);
+        mojulo.setEquation("x") catch unreachable;
+    }
+
+    setEquation(t);
 
     if (t.session.findFirst(Sprite)) |spr| {
         spr.spritesheet = &t.player;
@@ -336,4 +361,6 @@ pub fn resetProjection(t: *Game) void {
         @intToFloat(f32, t.framebuffer_height),
         0.0,
     );
+
+    t.view = mat4x4_identity;
 }

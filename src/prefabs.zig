@@ -38,7 +38,7 @@ pub const Mojulo = struct {
         errdefer gs.undoSpawn(entity_id);
 
         try gs.addComponent(entity_id, c.Mojulo{});
-        try gs.addComponent(entity_id, c.Transform{});
+        try gs.addComponent(entity_id, c.Transform{ .position = pos });
 
         return entity_id;
     }
