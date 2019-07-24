@@ -1,14 +1,14 @@
 const Gbe = @import("gbe_main.zig");
 
-pub fn ComponentObjectIterator(comptime T: type) type {
-    return struct {
+pub fn ComponentObjectIterator(comptime T: type, comptime capacity: usize) type {
+    return struct{
         const Self = @This();
 
-        list: *Gbe.ComponentList(T),
+        list: *Gbe.ComponentList(T, capacity),
         index: usize,
 
         pub fn next(self: *Self) ?*Gbe.ComponentObject(T) {
-            for (self.list.objects.items[self.index..self.list.count]) |*object, i| {
+            for (self.list.objects[self.index..self.list.count]) |*object, i| {
                 if (object.is_active) {
                     self.index += i + 1;
                     return object;
@@ -18,7 +18,7 @@ pub fn ComponentObjectIterator(comptime T: type) type {
             return null;
         }
 
-        pub fn init(list: *Gbe.ComponentList(T)) Self {
+        pub fn init(list: *Gbe.ComponentList(T, capacity)) Self {
             return Self{
                 .list = list,
                 .index = 0,
@@ -32,16 +32,16 @@ pub fn ComponentObjectIterator(comptime T: type) type {
 // - takes a field name (compile-time) and entity id (run-time), and only
 //   yields events where event.field == entity_id
 // - returns *T (component data) directly, instead of *ComponentObject(T)
-pub fn EventIterator(comptime T: type, comptime field: []const u8) type {
-    return struct {
+pub fn EventIterator(comptime T: type, comptime capacity: usize, comptime field: []const u8) type {
+    return struct{
         const Self = @This();
 
-        list: *Gbe.ComponentList(T),
+        list: *Gbe.ComponentList(T, capacity),
         entity_id: Gbe.EntityId,
         index: usize,
 
         pub fn next(self: *Self) ?*T {
-            for (self.list.objects.items[self.index..self.list.count]) |*object, i| {
+            for (self.list.objects[self.index..self.list.count]) |*object, i| {
                 if (object.is_active and Gbe.EntityId.eql(@field(&object.data, field), self.entity_id)) {
                     self.index += i + 1;
                     return &object.data;
@@ -51,7 +51,7 @@ pub fn EventIterator(comptime T: type, comptime field: []const u8) type {
             return null;
         }
 
-        pub fn init(list: *Gbe.ComponentList(T), entity_id: Gbe.EntityId) Self {
+        pub fn init(list: *Gbe.ComponentList(T, capacity), entity_id: Gbe.EntityId) Self {
             return Self{
                 .list = list,
                 .entity_id = entity_id,

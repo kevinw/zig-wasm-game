@@ -1,3 +1,5 @@
+//capacity=4
+
 const std = @import("std");
 usingnamespace @import("../globals.zig");
 const GameSession = @import("../session.zig").GameSession;

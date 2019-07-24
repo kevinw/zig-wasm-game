@@ -2,7 +2,6 @@
 
 const builtin = @import("builtin");
 const std = @import("std");
-const ArrayList = @import("std").ArrayList;
 const assert = std.debug.assert;
 
 const GbeConstants = @import("gbe_constants.zig");
@@ -28,11 +27,14 @@ pub fn ComponentObject(comptime T: type) type {
     };
 }
 
-pub fn ComponentList(comptime T: type) type {
+pub fn ComponentList(comptime T: type, comptime capacity_: usize) type {
     return struct {
         const Self = @This();
+
         pub const ComponentType = T;
-        objects: ArrayList(ComponentObject(T)),
+        const capacity = capacity_;
+
+        objects: [capacity]ComponentObject(T),
         count: usize,
     };
 }
@@ -68,36 +70,34 @@ pub fn Session(comptime ComponentLists: type) type {
             return @import("gbe_system.zig").buildSystem(Self, SystemData, think);
         }
 
-        pub fn init(self: *Self, rand_seed: u32, allocator: *std.mem.Allocator) void {
+        pub fn init(self: *Self, rand_seed: u32) void {
             self.prng = std.rand.DefaultPrng.init(rand_seed);
             self.next_entity_id = 1;
             self.num_removals = 0;
             inline for (@typeInfo(ComponentLists).Struct.fields) |field| {
-                const list = &@field(&self.components, field.name);
-                list.objects = @typeOf(list.objects).init(allocator);
-                list.count = 0;
+                @field(&self.components, field.name).count = 0;
             }
         }
 
-        //pub fn getCapacity(comptime T: type) usize {
-        //    @setEvalBranchQuota(10000);
-        //    comptime var capacity: usize = 0;
-        //    inline for (@typeInfo(ComponentLists).Struct.fields) |sfield| {
-        //        if (std.mem.eql(u8, sfield.name, @typeName(T))) {
-        //            capacity = sfield.field_type.capacity;
-        //        }
-        //    }
-        //    return capacity;
-        //}
+        pub fn getCapacity(comptime T: type) usize {
+            @setEvalBranchQuota(10000);
+            comptime var capacity: usize = 0;
+            inline for (@typeInfo(ComponentLists).Struct.fields) |sfield| {
+                if (std.mem.eql(u8, sfield.name, @typeName(T))) {
+                    capacity = sfield.field_type.capacity;
+                }
+            }
+            return capacity;
+        }
 
-        pub fn iter(self: *Self, comptime T: type) GbeIterators.ComponentObjectIterator(T) {
+        pub fn iter(self: *Self, comptime T: type) GbeIterators.ComponentObjectIterator(T, getCapacity(T)) {
             const list = &@field(&self.components, @typeName(T));
-            return GbeIterators.ComponentObjectIterator(T).init(list);
+            return GbeIterators.ComponentObjectIterator(T, comptime getCapacity(T)).init(list);
         }
 
         pub fn eventIter(self: *Self, comptime T: type, comptime field: []const u8, entity_id: EntityId) GbeIterators.EventIterator(T, getCapacity(T), field) {
             const list = &@field(&self.components, @typeName(T));
-            return GbeIterators.EventIterator(T, field).init(list, entity_id);
+            return GbeIterators.EventIterator(T, comptime getCapacity(T), field).init(list, entity_id);
         }
 
         pub fn findObject(self: *Self, entity_id: EntityId, comptime T: type) ?*ComponentObject(T) {
@@ -162,27 +162,20 @@ pub fn Session(comptime ComponentLists: type) type {
             const T: type = @typeOf(data);
             assert(@typeId(T) == builtin.TypeId.Struct);
             var list = &@field(&self.components, @typeName(T));
-            const log = @import("root")._log;
             const slot = blk: {
                 var i: usize = 0;
                 while (i < list.count) : (i += 1) {
-                    const object = &list.objects.items[i];
+                    const object = &list.objects[i];
                     if (!object.is_active) {
-                        //log("reusing slot {}", i);
                         break :blk object;
                     }
                 }
                 if (list.count < list.objects.len) {
                     i = list.count;
-                    //log("using end slot");
-                    break :blk &list.objects.items[i];
+                    list.count += 1;
+                    break :blk &list.objects[i];
                 }
-
-                _ = list.objects.addOne() catch unreachable;
-                list.count += 1;
-                const foo: ?@typeOf(&list.objects.items[i]) = &list.objects.items[i];
-                //log("adding new slot {}", list.count);
-                break :blk foo;
+                break :blk null;
             };
             if (slot) |object| {
                 object.is_active = true;

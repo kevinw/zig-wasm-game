@@ -1,3 +1,5 @@
+//capacity=10
+
 usingnamespace @import("../globals.zig");
 
 const GameSession = @import("../session.zig").GameSession;

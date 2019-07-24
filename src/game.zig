@@ -339,7 +339,7 @@ pub fn restartGame(t: *Game) void {
     t.is_paused = false;
     t.debug_console.reset();
     const gs = &t.session;
-    gs.init(42, c.allocator);
+    gs.init(42); //, c.allocator);
 
     const ss = prefabs.spawn_solar_system(gs);
 

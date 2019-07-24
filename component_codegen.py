@@ -8,14 +8,17 @@ generated_session_file = "src/session.zig"
 
 component_name_re = re.compile(r"pub const\s+(\w+)\s+=\s+struct")
 think_re = re.compile(r"(\w+)?\s*fn update\(\w+: \*GameSession, (.*)\)\s+(\w+)\s*")
+capacity_re = re.compile(r"\s*\/\/\s*capacity\s*=(\d+)")
+
+DEFAULT_CAPACITY = 100
 
 def to_module_name(kls):
     return f"components/{kls.lower()}.zig"
 
 def gen_game_session(output, structs):
     components = "\n".join(
-        f"    {name}: gbe.ComponentList({name}),"
-        for name in structs)
+        f"    {name}: gbe.ComponentList({name}, {capacity}),"
+        for name, capacity in structs)
 
     output.write(f"""// AUTO-GENERATED
 const gbe = @import("gbe");
@@ -32,6 +35,7 @@ pub const GameSession = gbe.Session(struct {{
 
 def process_component_file(output, filename, to_import):
     component_name = None
+    capacity = None
 
     reqs = []
     for line in (l.strip() for l in open(filename, "r").readlines()):
@@ -39,6 +43,13 @@ def process_component_file(output, filename, to_import):
             match = component_name_re.search(line.strip())
             if match is not None:
                 component_name = match.group(1)
+
+        if capacity is None:
+            cap_match = capacity_re.search(line)
+            if cap_match is not None:
+                capacity = int(cap_match.group(1))
+                print("overridding capacity to", capacity, "for", filename)
+
         if "fn update(" in line:
             m = think_re.search(line)
             if m is None:
@@ -57,12 +68,16 @@ def process_component_file(output, filename, to_import):
                 reqs.append((var, typename))
 
     lines = []
+    if capacity is None:
+        capacity = DEFAULT_CAPACITY
+
     if component_name is not None:
         lines.append("""usingnamespace @import("session.zig");""")
-        to_import.add(component_name)
+        to_import[component_name] = capacity
         for typename in set(t for v, t in reqs):
             if typename.startswith("*"): typename = typename[1:]
-            to_import.add(typename)
+            if typename not in to_import:
+                to_import[typename] = DEFAULT_CAPACITY
         lines.append(f"""
 const {component_name}_SystemData = struct {{
     id: EntityId,""")
@@ -88,15 +103,15 @@ def write_contents_if_different(filename, contents):
 def main():
     output = io.StringIO()
 
-    to_import = set()
+    to_import = dict()
     all_lines = []
     for filename in os.listdir(path_to_components):
         all_lines.extend(process_component_file(output, os.path.join(path_to_components, filename), to_import))
 
-    to_import = sorted(list(to_import))
+    to_import = sorted(to_import.items())
 
     output.writelines(["pub const {} = @import(\"{}\").{};\n".format(
-        t, to_module_name(t), t) for t in to_import])
+        t, to_module_name(t), t) for t, capacity in to_import])
 
     for line in all_lines:
         output.write(line)
@@ -104,7 +119,7 @@ def main():
 
     # run all
     output.write("pub fn run_ALL(gs: *GameSession) void {\n")
-    for t in to_import:
+    for t, capacity in to_import:
         output.write(f"    run_{t}(gs);\n");
     output.write("}\n")
 

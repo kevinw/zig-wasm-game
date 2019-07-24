@@ -1,3 +1,5 @@
+//capacity=20
+
 const std = @import("std");
 const c = @import("../platform.zig");
 const GameSession = @import("../session.zig").GameSession;

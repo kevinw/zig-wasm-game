@@ -10,11 +10,11 @@ const Gbe = @import("gbe_main.zig");
 pub fn buildSystem(
     comptime SessionType: type,
     comptime SelfType: type,
-    comptime think: fn (*SessionType, SelfType) bool,
-) fn (*SessionType) void {
+    comptime think: fn(*SessionType, SelfType)bool,
+) fn(*SessionType)void {
     std.debug.assert(@typeId(SelfType) == builtin.TypeId.Struct);
 
-    const Impl = struct {
+    const Impl = struct{
         fn runOne(
             gs: *SessionType,
             self_id: Gbe.EntityId,
@@ -34,11 +34,11 @@ pub fn buildSystem(
                 comptime const ComponentType = unpackComponentType(field.field_type);
                 @field(self, field.name) =
                     if (ComponentType == MainComponentType)
-                    main_component
-                else if (@typeId(field.field_type) == builtin.TypeId.Optional)
-                    gs.find(self_id, ComponentType)
-                else
-                    gs.find(self_id, ComponentType) orelse return true;
+                        main_component
+                    else if (@typeId(field.field_type) == builtin.TypeId.Optional)
+                        gs.find(self_id, ComponentType)
+                    else
+                        gs.find(self_id, ComponentType) orelse return true;
             }
             // call the think function
             return think(gs, self);
@@ -48,8 +48,7 @@ pub fn buildSystem(
             gs: *SessionType,
             comptime MainComponentType: type,
         ) void {
-            var it = gs.iter(MainComponentType);
-            while (it.next()) |object| {
+            var it = gs.iter(MainComponentType); while (it.next()) |object| {
                 if (!runOne(gs, object.entity_id, MainComponentType, &object.data)) {
                     gs.markEntityForRemoval(object.entity_id);
                 }
@@ -75,8 +74,7 @@ pub fn buildSystem(
 
             inline for (@typeInfo(SelfType).Struct.fields) |field| {
                 if (field.field_type != Gbe.EntityId and
-                    @typeId(field.field_type) != builtin.TypeId.Optional)
-                {
+                        @typeId(field.field_type) != builtin.TypeId.Optional) {
                     all_fields_optional = false;
                 }
             }
