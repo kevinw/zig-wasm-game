@@ -203,6 +203,18 @@ pub fn draw(t: *Game) void {
                 }
             }
         }
+
+        {
+            var it = t.session.iter(Renderer);
+            while (it.next()) |object| {
+                if (!object.is_active) continue;
+                const renderer = object.data;
+
+                const model = renderer.getLocalToWorldMatrix();
+                const mvp = t.projection.mult(t.view.mult(model));
+                fillRectMvp(t, vec4(1, 1, 1, 1), mvp);
+            }
+        }
     }
 
     t.debug_console.draw(t);
@@ -328,6 +340,8 @@ pub fn restartGame(t: *Game) void {
     t.debug_console.reset();
     const gs = &t.session;
     gs.init(42, c.allocator);
+
+    const ss = prefabs.spawn_solar_system(gs);
 
     const player_id = prefabs.Player.spawn(gs, prefabs.Player.Params{}) catch unreachable;
     if (gs.find(player_id, Sprite)) |player_sprite| {

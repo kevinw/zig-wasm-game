@@ -158,7 +158,7 @@ pub fn Session(comptime ComponentLists: type) type {
         // TODO - optional LRU reuse (whether this is used would be up to the
         // ComponentStorage config, per component type. obviously, kicking out old
         // entities to make room for new ones is not always the right choice)
-        pub fn addComponent(self: *Self, entity_id: EntityId, data: var) !void {
+        pub fn addComponent(self: *Self, entity_id: EntityId, data: var) !*ComponentObject(@typeOf(data)) {
             const T: type = @typeOf(data);
             assert(@typeId(T) == builtin.TypeId.Struct);
             var list = &@field(&self.components, @typeName(T));
@@ -188,6 +188,7 @@ pub fn Session(comptime ComponentLists: type) type {
                 object.is_active = true;
                 object.data = data;
                 object.entity_id = entity_id;
+                return object;
             } else {
                 //std.debug.warn("warning: no slots available for new `" ++ @typeName(T) ++ "` component\n");
                 return error.NoComponentSlotsAvailable;

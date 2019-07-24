@@ -3,6 +3,29 @@ const gbe = @import("gbe");
 const c = @import("components_auto.zig");
 const GameSession = @import("session.zig").GameSession;
 
+fn spawn_entity(gs: *GameSession, translation: Vec3, parent: ?*c.Transform) !*gbe.ComponentObject(c.Transform) {
+    const entity_id = gs.spawn();
+    errdefer gs.undoSpawn(entity_id);
+
+    const m = Mat4x4.identity.translate(translation.x, translation.y, translation.z);
+    const transform = try gs.addComponent(entity_id, c.Transform{ .local_matrix = m });
+    _ = try gs.addComponent(entity_id, c.AutoMover{});
+    _ = try gs.addComponent(entity_id, c.Renderer{ .transform = &transform.data });
+
+    if (parent) |p| {
+        transform.data.setParent(p);
+    }
+
+    return transform;
+}
+
+pub fn spawn_solar_system(gs: *GameSession) !gbe.EntityId {
+    const sun = try spawn_entity(gs, vec3(0, 0, 0), null);
+    const earth = try spawn_entity(gs, vec3(100, 0, 0), &sun.data);
+    const moon = try spawn_entity(gs, vec3(20, 0, 0), &earth.data);
+    return sun.entity_id;
+}
+
 pub const Player = struct {
     pub const Params = struct {};
 
@@ -10,9 +33,9 @@ pub const Player = struct {
         const entity_id = gs.spawn();
         errdefer gs.undoSpawn(entity_id);
 
-        try gs.addComponent(entity_id, c.Player{});
-        try gs.addComponent(entity_id, c.Sprite{});
-        try gs.addComponent(entity_id, c.Gun{ .offset = vec3(24, 24, 0) });
+        _ = try gs.addComponent(entity_id, c.Player{});
+        _ = try gs.addComponent(entity_id, c.Sprite{});
+        _ = try gs.addComponent(entity_id, c.Gun{ .offset = vec3(24, 24, 0) });
 
         return entity_id;
     }
@@ -24,9 +47,9 @@ pub const Bullet = struct {
         errdefer gs.undoSpawn(entity_id);
         const game_state = &@import("game.zig").game_state;
 
-        try gs.addComponent(entity_id, c.Sprite{ .pos = pos, .spritesheet = &game_state.bullet_sprite });
-        try gs.addComponent(entity_id, c.Mover{ .vel = vel });
-        try gs.addComponent(entity_id, c.Destroy_Timer{ .secs_left = 1.5 });
+        _ = try gs.addComponent(entity_id, c.Sprite{ .pos = pos, .spritesheet = &game_state.bullet_sprite });
+        _ = try gs.addComponent(entity_id, c.Mover{ .vel = vel });
+        _ = try gs.addComponent(entity_id, c.Destroy_Timer{ .secs_left = 1.5 });
 
         return entity_id;
     }
@@ -37,8 +60,8 @@ pub const Mojulo = struct {
         const entity_id = gs.spawn();
         errdefer gs.undoSpawn(entity_id);
 
-        try gs.addComponent(entity_id, c.Mojulo{});
-        try gs.addComponent(entity_id, c.Transform{ .position = pos });
+        _ = try gs.addComponent(entity_id, c.Mojulo{});
+        _ = try gs.addComponent(entity_id, c.Transform{ .position = pos });
 
         return entity_id;
     }

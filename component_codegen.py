@@ -39,8 +39,12 @@ def process_component_file(output, filename, to_import):
             match = component_name_re.search(line.strip())
             if match is not None:
                 component_name = match.group(1)
-        if "fn update" in line:
-            think = think_re.search(line).groups()
+        if "fn update(" in line:
+            m = think_re.search(line)
+            if m is None:
+                raise Exception("expected line to look like an update function: " + line)
+
+            think = m.groups()
             visibility, args, return_type = think
             if visibility != "pub":
                 raise Exception("update fn must be pub")

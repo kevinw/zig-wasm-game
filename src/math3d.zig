@@ -2,6 +2,8 @@ const std = @import("std");
 const assert = std.debug.assert;
 
 pub const Mat4x4 = struct {
+    pub const identity = mat4x4_identity;
+
     data: [4][4]f32,
 
     /// matrix multiplication

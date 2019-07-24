@@ -1,11 +1,28 @@
+pub const AutoMover = @import("components/automover.zig").AutoMover;
 pub const Destroy_Timer = @import("components/destroy_timer.zig").Destroy_Timer;
 pub const Gun = @import("components/gun.zig").Gun;
 pub const LiveShader = @import("components/liveshader.zig").LiveShader;
 pub const Mojulo = @import("components/mojulo.zig").Mojulo;
 pub const Mover = @import("components/mover.zig").Mover;
 pub const Player = @import("components/player.zig").Player;
+pub const Renderer = @import("components/renderer.zig").Renderer;
 pub const Sprite = @import("components/sprite.zig").Sprite;
 pub const Transform = @import("components/transform.zig").Transform;
+usingnamespace @import("session.zig");
+
+const AutoMover_SystemData = struct {
+    id: EntityId,
+    auto_mover: *AutoMover,
+    transform: *Transform,
+};
+
+pub const run_AutoMover = GameSession.buildSystem(AutoMover_SystemData, AutoMover_think);
+
+inline fn AutoMover_think(gs: *GameSession, self: AutoMover_SystemData) bool {
+    const mod = @import("components/automover.zig");
+    return @inlineCall(mod.update, gs, self.auto_mover, self.transform);
+}
+        
 usingnamespace @import("session.zig");
 
 const Destroy_Timer_SystemData = struct {
@@ -96,6 +113,21 @@ inline fn Player_think(gs: *GameSession, self: Player_SystemData) bool {
         
 usingnamespace @import("session.zig");
 
+const Renderer_SystemData = struct {
+    id: EntityId,
+    renderer: *Renderer,
+    transform: *Transform,
+};
+
+pub const run_Renderer = GameSession.buildSystem(Renderer_SystemData, Renderer_think);
+
+inline fn Renderer_think(gs: *GameSession, self: Renderer_SystemData) bool {
+    const mod = @import("components/renderer.zig");
+    return @inlineCall(mod.update, gs, self.renderer, self.transform);
+}
+        
+usingnamespace @import("session.zig");
+
 const Sprite_SystemData = struct {
     id: EntityId,
     sprite: *Sprite,
@@ -123,12 +155,14 @@ inline fn Transform_think(gs: *GameSession, self: Transform_SystemData) bool {
 }
         
 pub fn run_ALL(gs: *GameSession) void {
+    run_AutoMover(gs);
     run_Destroy_Timer(gs);
     run_Gun(gs);
     run_LiveShader(gs);
     run_Mojulo(gs);
     run_Mover(gs);
     run_Player(gs);
+    run_Renderer(gs);
     run_Sprite(gs);
     run_Transform(gs);
 }
