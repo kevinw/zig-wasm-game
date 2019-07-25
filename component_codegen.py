@@ -48,7 +48,7 @@ def process_component_file(output, filename, to_import):
             cap_match = capacity_re.search(line)
             if cap_match is not None:
                 capacity = int(cap_match.group(1))
-                print("overridding capacity to", capacity, "for", filename)
+                #print("overridding capacity to", capacity, "for", filename)
 
         if "fn update(" in line:
             m = think_re.search(line)

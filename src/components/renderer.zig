@@ -6,11 +6,8 @@ pub const Renderer = struct {
     transform: ?*Transform,
 
     pub fn getLocalToWorldMatrix(self: *const Renderer) Mat4x4 {
-        if (self.transform) |t| {
-            return t.world_matrix;
-        }
-
-        return Mat4x4.identity;
+        const mat = if (self.transform) |t| t.world_matrix else Mat4x4.identity;
+        return mat.scale(25, 25, 1); // for size
     }
 };
 

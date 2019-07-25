@@ -25,6 +25,12 @@ const WHITE = vec4(1, 1, 1, 1);
 
 pub var game_state: Game = undefined;
 
+pub const DrawOpts = struct {
+    sprites: bool = true,
+    mojulos: bool = true,
+    renderers: bool = true,
+};
+
 pub const Game = struct {
     const Self = @This();
 
@@ -53,6 +59,8 @@ pub const Game = struct {
     is_loading: bool,
     mojulo: ?*Mojulo,
     quit_requested: bool = false,
+
+    draw_opts: DrawOpts = DrawOpts{},
 
     equation_index: i32 = 0,
 
@@ -169,15 +177,11 @@ pub fn draw(t: *Game) void {
     } else if (t.is_paused) {
         drawCenteredText(t, "PAUSED", 1.0, WHITE);
     } else {
-        const w = @intToFloat(f32, t.framebuffer_width);
-        const h = @intToFloat(f32, t.framebuffer_height);
-        //fillRectShader(&t.test_shader, t, 0, 0, w, h);
-        //fillRectShader(&t.mojulo.shader, t, 0, 0, w, h);
-        //drawCenteredText(t, "play", 4.0, vec4(1, 1, 1, 0.5));
-        const color = vec4(1, 1, 1, 1);
 
         // draw mojulos
-        {
+        if (t.draw_opts.mojulos) {
+            const w = @intToFloat(f32, t.framebuffer_width);
+            const h = @intToFloat(f32, t.framebuffer_height);
             var it = t.session.iter(Mojulo);
             while (it.next()) |object| {
                 if (!object.is_active) continue;
@@ -191,27 +195,26 @@ pub fn draw(t: *Game) void {
             }
         }
 
-        {
+        if (t.draw_opts.sprites) {
             var it = t.session.iter(Sprite);
             while (it.next()) |object| {
                 if (!object.is_active) continue;
                 const sprite = object.data;
                 if (sprite.spritesheet) |spritesheet| {
-                    spritesheet.draw(t.all_shaders, sprite.index, sprite_matrix(t.projection, t.view, sprite.pos, 4.0), color);
+                    spritesheet.draw(t.all_shaders, sprite.index, sprite_matrix(t.projection, t.view, sprite.pos, 4.0), vec4(1, 1, 1, 1));
                 } else {
                     fillRect(t, vec4(1, 0, 1, 1), sprite.pos.x, sprite.pos.y, 16, 16);
                 }
             }
         }
 
-        {
+        if (t.draw_opts.renderers) {
             var it = t.session.iter(Renderer);
             while (it.next()) |object| {
                 if (!object.is_active) continue;
                 const renderer = object.data;
 
-                const model = renderer.getLocalToWorldMatrix();
-                const mvp = t.projection.mult(t.view.mult(model));
+                const mvp = t.projection.mult(t.view.mult(renderer.getLocalToWorldMatrix()));
                 fillRectMvp(t, vec4(1, 1, 1, 1), mvp);
             }
         }
@@ -335,6 +338,7 @@ pub fn setEquation(t: *Game) void {
 }
 
 pub fn restartGame(t: *Game) void {
+    t.draw_opts = DrawOpts{};
     t.game_over = false;
     t.is_paused = false;
     t.debug_console.reset();
