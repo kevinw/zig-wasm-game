@@ -43,21 +43,20 @@ pub const Transform = struct {
     }
 
     fn computeLocalMatrix(self: *Self) Mat4x4 {
-        const scaled = Mat4x4.identity.scaleVec(self.scale);
-        const rotated = scaled.rotate(self.rotation.x, vec3(1, 0, 0)).rotate(self.rotation.y, vec3(0, 1, 0)).rotate(self.rotation.z, vec3(0, 0, 1));
-        const translated = rotated.translateVec(self.position);
-        return translated;
-
-        //const translated = Mat4x4.identity.translateVec(self.position);
-        //const rotated = translated.rotate(self.rotation.x, vec3(1, 0, 0)).rotate(self.rotation.y, vec3(0, 1, 0)).rotate(self.rotation.z, vec3(0, 0, 1));
-        //const scaled = rotated.scaleVec(self.scale);
-        //self.local_matrix = scaled;
+        //const scaled = Mat4x4.identity.scaleVec(self.scale);
+        //const rotated = scaled.rotate(self.rotation.x, vec3(1, 0, 0)).rotate(self.rotation.y, vec3(0, 1, 0)).rotate(self.rotation.z, vec3(0, 0, 1));
+        //const translated = rotated.translateVec(self.position);
+        //return translated;
+        const translated = Mat4x4.identity.translateVec(self.position);
+        const rotated = translated.rotate(self.rotation.x, vec3(1, 0, 0)).rotate(self.rotation.y, vec3(0, 1, 0)).rotate(self.rotation.z, vec3(0, 0, 1));
+        const scaled = rotated.scaleVec(self.scale);
+        return scaled;
     }
 
     fn updateWorldMatrix(self: *Self, parent_world_matrix: Mat4x4) void {
         // compute our world matrix by multiplying our local matrix with
         // our parent's world matrix
-        self.world_matrix = self.computeLocalMatrix().mult(parent_world_matrix);
+        self.world_matrix = parent_world_matrix.mult(self.computeLocalMatrix());
 
         // node do the same for all of our children
         for (self.children.toSlice()) |child| {
