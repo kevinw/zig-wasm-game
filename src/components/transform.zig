@@ -26,7 +26,6 @@ pub const Transform = struct {
     rotation: Vec3 = Vec3.zero,
     scale: Vec3 = Vec3.one,
 
-    local_matrix: Mat4x4 = Mat4x4.identity,
     world_matrix: Mat4x4 = Mat4x4.identity,
 
     pub fn setParent(self: *Self, parent: ?*Transform) void {
@@ -43,23 +42,22 @@ pub const Transform = struct {
         self.parent = parent;
     }
 
-    fn computeLocalMatrix(self: *Self) void {
-        //const scaled = Mat4x4.identity.scaleVec(self.scale);
-        //const rotated = scaled.rotate(self.rotation.x, vec3(1, 0, 0)).rotate(self.rotation.y, vec3(0, 1, 0)).rotate(self.rotation.z, vec3(0, 0, 1));
-        //const translated = rotated.translateVec(self.position);
-        const translated = Mat4x4.identity.translateVec(self.position);
-        const rotated = translated.rotate(self.rotation.x, vec3(1, 0, 0)).rotate(self.rotation.y, vec3(0, 1, 0)).rotate(self.rotation.z, vec3(0, 0, 1));
-        const scaled = rotated.scaleVec(self.scale);
+    fn computeLocalMatrix(self: *Self) Mat4x4 {
+        const scaled = Mat4x4.identity.scaleVec(self.scale);
+        const rotated = scaled.rotate(self.rotation.x, vec3(1, 0, 0)).rotate(self.rotation.y, vec3(0, 1, 0)).rotate(self.rotation.z, vec3(0, 0, 1));
+        const translated = rotated.translateVec(self.position);
+        return translated;
 
-        self.local_matrix = scaled;
+        //const translated = Mat4x4.identity.translateVec(self.position);
+        //const rotated = translated.rotate(self.rotation.x, vec3(1, 0, 0)).rotate(self.rotation.y, vec3(0, 1, 0)).rotate(self.rotation.z, vec3(0, 0, 1));
+        //const scaled = rotated.scaleVec(self.scale);
+        //self.local_matrix = scaled;
     }
 
     fn updateWorldMatrix(self: *Self, parent_world_matrix: Mat4x4) void {
-        computeLocalMatrix(self);
-
         // compute our world matrix by multiplying our local matrix with
         // our parent's world matrix
-        self.world_matrix = self.local_matrix.mult(parent_world_matrix);
+        self.world_matrix = self.computeLocalMatrix().mult(parent_world_matrix);
 
         // node do the same for all of our children
         for (self.children.toSlice()) |child| {
