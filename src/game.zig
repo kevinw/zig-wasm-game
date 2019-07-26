@@ -101,11 +101,11 @@ const equations = [_][]const u8{
     "((time-x+y)|(time-y+x)|(time+x+y)|(time-x-y))^6", // TODO: why is this one so different? https://maxbittker.github.io/Mojulo/#KCh0aW1lLXgreSl8KHRpbWUteSt4KXwodGltZSt4K3kpfCh0aW1lLXgteSkpXjY=
     "(y*x-(time*1))&(y+(cos(r*0.01*time)))",
     "r*A*r*pow(sin(0.001*time)+(cos(0.01*time)+1),A)",
-    "cos(A*(r^x*4)*(sin(time*.01)+90))*(10000+pow(3,sin(time/15)))",
-    "pow(r,2+cos(time*0.001))^((0.5*time)|(x*(sin(time*0.001)*10)))",
-    "-time^(time*.5)&(time*.3) -1000*(x^(time*.1))&100*(y^(time*.15))",
+    "cos(A*(r^|x*4)*(sin(time*.01)+90))*(10000+pow(3,sin(time/15)))",
+    "pow(r,2+cos(time*0.001))^|((0.5*time)|(x*(sin(time*0.001)*10)))",
+    "-time^|(time*.5)&(time*.3) -1000*(x^|(time*.1))&100*(y^|(time*.15))",
     "(x*(time*sin(x*(time/900))*.1))-(y*(time*cos(y*time/1000)*.01))",
-    "((y*5-time*cos(x))^(x*5-time*cos(y)))^-(sin(time*.01)/tan(x)*cos(r)*y)",
+    "((y*5-time*cos(x))^|(x*5-time*cos(y)))^|-(sin(time*.01)/tan(x)*cos(r)*y)",
 
     // from the desktop
     "sqrt(x*y*r*time)<<(x*y/(r*sin(time*0.05)))",

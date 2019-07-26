@@ -1,3 +1,6 @@
+// mimics the tiny expression language used in
+// https://maxbittker.github.io/Mojulo/
+
 const std = @import("std");
 pub const warn = @import("base.zig").warn;
 const VERBOSE = false;
@@ -310,17 +313,25 @@ const State = struct {
             '*' => s.setBuiltinInfixToken("mul", peek, 1),
             '/' => s.setBuiltinInfixToken("divide", peek, 1),
             '%' => s.setBuiltinInfixToken("fmod", peek, 1),
-            //'^' => s.setBuiltinInfixToken("pow", peek, 1),
+
+            '^' => if (s.next.len > 1 and s.next[1] == '|')
+                s.setBuiltinInfixToken("bitwise_xor", peek, 2)
+            else
+                s.setBuiltinInfixToken("pow", peek, 1),
 
             '|' => s.setBuiltinInfixToken("bitwise_or", peek, 1),
             '&' => s.setBuiltinInfixToken("bitwise_and", peek, 1),
             '~' => s.setBuiltinInfixToken("bitwise_not", peek, 1),
-            '^' => s.setBuiltinInfixToken("bitwise_xor", peek, 1),
 
             '$' => NextOp.init(.InfixFunctionApply, 1),
 
             '<' => if (s.next.len > 1 and s.next[1] == '<')
                 s.setBuiltinInfixToken("shift_left", peek, 2)
+            else
+                NextOp.init(.Error, 1),
+
+            '>' => if (s.next.len > 1 and s.next[1] == '<')
+                s.setBuiltinInfixToken("shift_right", peek, 2)
             else
                 NextOp.init(.Error, 1),
 
@@ -825,6 +836,10 @@ fn fract(a: f64) f64 {
     return a - std.math.floor(a);
 }
 
+fn sqrt(a: f64) f64 {
+    return std.math.sqrt(a);
+}
+
 pub const builtinFunctions = [_]FuncCall{
     FuncCall.init("abs", fabs),
     FuncCall.init("add", add),
@@ -841,6 +856,7 @@ pub const builtinFunctions = [_]FuncCall{
     FuncCall.init("fmod", fmod),
     FuncCall.init("rand", rand),
     FuncCall.init("fract", fract),
+    FuncCall.init("sqrt", sqrt),
 
     FuncCall.init("bitwise_xor", bitwise_xor),
     FuncCall.init("bitwise_and", bitwise_and),
@@ -880,10 +896,11 @@ test "infix operators" {
     try assertInterp("3*3*3", 27.0);
     try assertInterp("12/2", 6.0);
     try assertInterp("5/10", 0.5);
-    try assertInterp("3^2", 1.0);
-    try assertInterp("44^1", 45.0);
-    try assertInterp("abs(1^2+3)", 4);
-    try assertInterp("((1^2)+3)", 6);
+    try assertInterp("3^|2", 1.0);
+    try assertInterp("3^2", 9.0);
+    try assertInterp("44^|1", 45.0);
+    try assertInterp("abs(1^|2+3)", 4);
+    try assertInterp("((1^|2)+3)", 6);
     try assertInterp("12 % 5", 2);
     try assertInterp("12 % 4.5", 3);
     try assertInterp("abs(1)&0x1", 1);

@@ -44,6 +44,7 @@ const passThroughFuncs = [_][]const u8{
     "rand",
     "abs",
     "fract",
+    "sqrt",
 };
 
 const funcRenames = blk: {
@@ -236,6 +237,7 @@ var test_vars = blk: {
 
 test "glsl functions" {
     try assertGLSL("fract(x)", "fract(x)");
+    try assertGLSL("sqrt(x)", "sqrt(x)");
 }
 
 test "ints to floats" {
@@ -244,10 +246,10 @@ test "ints to floats" {
 }
 
 test "infix to function" {
-    //try assertGLSL("2^3", "pow(2.0, 3.0)");
-    //try assertGLSL("x^y", "pow(x, y)");
-    try assertGLSL("2^3", "float(int(2.0) ^ int(3.0))");
-    try assertGLSL("x^y", "float(int(x) ^ int(y))");
+    try assertGLSL("2^3", "pow(2.0, 3.0)");
+    try assertGLSL("x^y", "pow(x, y)");
+    try assertGLSL("2^|3", "float(int(2.0) ^ int(3.0))");
+    try assertGLSL("x^|y", "float(int(x) ^ int(y))");
 }
 
 test "infix parens" {
