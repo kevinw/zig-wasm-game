@@ -4,6 +4,7 @@ const warn = @import("std").debug.warn;
 const builtin = @import("builtin");
 
 //const WIN_SDK_PATH = "C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.16299.0\\";
+
 const VCPKG_PATH = "../vcpkg/installed/x64-windows/";
 /// Split the INCLUDE env var by the semicolon character and add each path to
 //the given step's include paths.

@@ -9,6 +9,7 @@ pub const EntityId = gbe.EntityId;
 pub const GameSession = gbe.Session(struct {
     AutoMover: gbe.ComponentList(AutoMover, 100),
     Destroy_Timer: gbe.ComponentList(Destroy_Timer, 100),
+    Follow: gbe.ComponentList(Follow, 10),
     Gun: gbe.ComponentList(Gun, 10),
     LiveShader: gbe.ComponentList(LiveShader, 100),
     Mojulo: gbe.ComponentList(Mojulo, 20),

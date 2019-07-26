@@ -106,6 +106,19 @@ const equations = [_][]const u8{
     "-time^(time*.5)&(time*.3) -1000*(x^(time*.1))&100*(y^(time*.15))",
     "(x*(time*sin(x*(time/900))*.1))-(y*(time*cos(y*time/1000)*.01))",
     "((y*5-time*cos(x))^(x*5-time*cos(y)))^-(sin(time*.01)/tan(x)*cos(r)*y)",
+
+    // from the desktop
+    "sqrt(x*y*r*time)<<(x*y/(r*sin(time*0.05)))",
+    "((time*r*A))|(sin(x*(time*0.02))*100+cos(y*time*0.01)*(sin(time*0.1)*200))",
+    "x%y*(time*time)",
+    "(x%(sin(y)*200))*(tan(1/A)%(time*0.1))",
+    "(sin(x)^tan(y*time*0.01))+rand()*20",
+    "cos(time*y)*abs(x-rand()*(time*0.1))",
+    "y^(1/(time*cos(time)))^abs(x-rand()*(time*0.1))",
+    "(x^|y|(time/cos(x)))%(1/sin(y*(2000-time)))",
+    "tan(x*x*x)*1/((x^|y|(time/cos(x)))%(time*A))",
+    "tan(x^|y|(cos(time)^|x))*(time*2000)",
+    "r*cos(x*1/y*cos(tan(time*0.01)))^tan(tan(tan(x*y*0.001+(0.1*sin(time*0.01)))))",
 };
 
 fn fillRectShader(s: *ShaderProgram, t: *Game, x: f32, y: f32, w: f32, h: f32) void {
@@ -138,12 +151,14 @@ fn fillRectShader(s: *ShaderProgram, t: *Game, x: f32, y: f32, w: f32, h: f32) v
     c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 }
 
-fn fillRectMvp(t: *Game, color: Vec4, mvp: Mat4x4) void {
+fn fillRectMvp(t: *Game, color: Vec4, mvp: Mat4x4, origin: bool) void {
     t.all_shaders.primitive.bind();
     t.all_shaders.primitive.setUniformVec4(t.all_shaders.primitive_uniform_color, color);
     t.all_shaders.primitive.setUniformMat4x4(t.all_shaders.primitive_uniform_mvp, mvp);
 
-    c.glBindBuffer(c.GL_ARRAY_BUFFER, t.static_geometry.rect_2d_vertex_buffer);
+    const geo = &t.static_geometry;
+
+    c.glBindBuffer(c.GL_ARRAY_BUFFER, if (origin) geo.rect_2d_origin_vertex_buffer else geo.rect_2d_vertex_buffer);
     c.glEnableVertexAttribArray(@intCast(c.GLuint, t.all_shaders.primitive_attrib_position));
     c.glVertexAttribPointer(@intCast(c.GLuint, t.all_shaders.primitive_attrib_position), 3, c.GL_FLOAT, c.GL_FALSE, 0, if (c.is_web) 0 else null);
     c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
@@ -152,7 +167,7 @@ fn fillRectMvp(t: *Game, color: Vec4, mvp: Mat4x4) void {
 fn fillRect(t: *Game, color: Vec4, x: f32, y: f32, w: f32, h: f32) void {
     const model = mat4x4_identity.translate(x, y, 0.0).scale(w, h, 0.0);
     const mvp = t.projection.mult(t.view.mult(model));
-    fillRectMvp(t, color, mvp);
+    fillRectMvp(t, color, mvp, false);
 }
 
 fn drawCenteredText(t: *Game, text: []const u8, scale: f32, color: Vec4) void {
@@ -170,59 +185,64 @@ fn sprite_matrix(proj: Mat4x4, view: Mat4x4, pos: Vec3, size: f32) Mat4x4 {
 }
 
 pub fn draw(t: *Game) void {
+    defer t.debug_console.draw(t);
+    defer debug_gl.assertNoError();
+
     if (t.is_loading) {
         drawCenteredText(t, "LOADING", 2.0, WHITE);
-    } else if (t.game_over) {
+        return;
+    }
+
+    if (t.game_over) {
         drawCenteredText(t, "GAME OVER", 1.0, WHITE);
-    } else if (t.is_paused) {
+        return;
+    }
+
+    if (t.is_paused) {
         drawCenteredText(t, "PAUSED", 1.0, WHITE);
-    } else {
+        return;
+    }
 
-        // draw mojulos
-        if (t.draw_opts.mojulos) {
-            const w = @intToFloat(f32, t.framebuffer_width);
-            const h = @intToFloat(f32, t.framebuffer_height);
-            var it = t.session.iter(Mojulo);
-            while (it.next()) |object| {
-                if (!object.is_active) continue;
-                var mojulo = object.data;
-                if (mojulo.shader) |*shader| {
-                    if (t.session.find(object.entity_id, Transform)) |xform| {
-                        const p = xform.position;
-                        fillRectShader(shader, t, p.x, p.y, w, h);
-                    }
+    // draw mojulos
+    if (t.draw_opts.mojulos) {
+        const w = @intToFloat(f32, t.framebuffer_width);
+        const h = @intToFloat(f32, t.framebuffer_height);
+        var it = t.session.iter(Mojulo);
+        while (it.next()) |object| {
+            if (!object.is_active) continue;
+            var mojulo = object.data;
+            if (mojulo.shader) |*shader| {
+                if (t.session.find(object.entity_id, Transform)) |xform| {
+                    const p = xform.position;
+                    fillRectShader(shader, t, p.x, p.y, w, h);
                 }
-            }
-        }
-
-        if (t.draw_opts.sprites) {
-            var it = t.session.iter(Sprite);
-            while (it.next()) |object| {
-                if (!object.is_active) continue;
-                const sprite = object.data;
-                if (sprite.spritesheet) |spritesheet| {
-                    spritesheet.draw(t.all_shaders, sprite.index, sprite_matrix(t.projection, t.view, sprite.pos, 4.0), vec4(1, 1, 1, 1));
-                } else {
-                    fillRect(t, vec4(1, 0, 1, 1), sprite.pos.x, sprite.pos.y, 16, 16);
-                }
-            }
-        }
-
-        if (t.draw_opts.renderers) {
-            var it = t.session.iter(Renderer);
-            while (it.next()) |object| {
-                if (!object.is_active) continue;
-                const renderer = object.data;
-
-                const mvp = t.projection.mult(t.view.mult(renderer.getLocalToWorldMatrix()));
-                fillRectMvp(t, vec4(1, 1, 1, 1), mvp);
             }
         }
     }
 
-    t.debug_console.draw(t);
+    if (t.draw_opts.sprites) {
+        var it = t.session.iter(Sprite);
+        while (it.next()) |object| {
+            if (!object.is_active) continue;
+            const sprite = object.data;
+            if (sprite.spritesheet) |spritesheet| {
+                spritesheet.draw(t.all_shaders, sprite.index, sprite_matrix(t.projection, t.view, sprite.pos, 4.0), vec4(1, 1, 1, 1));
+            } else {
+                fillRect(t, vec4(1, 0, 1, 1), sprite.pos.x, sprite.pos.y, 16, 16);
+            }
+        }
+    }
 
-    debug_gl.assertNoError();
+    if (t.draw_opts.renderers) {
+        var it = t.session.iter(Renderer);
+        while (it.next()) |object| {
+            if (!object.is_active) continue;
+            const renderer = object.data;
+
+            const mvp = t.projection.mult(t.view.mult(renderer.getLocalToWorldMatrix()));
+            fillRectMvp(t, vec4(1, 1, 1, 1), mvp, true);
+        }
+    }
 }
 
 pub fn drawText(t: *const Game, text: []const u8, left: i32, top: i32, size: f32) void {
@@ -263,8 +283,9 @@ pub fn nextFrame(t: *Game, elapsed: f64) void {
 
     @import("components_auto.zig").run_ALL(&t.session);
 
-    const offset = t.player_sprite.pos.multScalar(-1).add(vec3(@intToFloat(f32, t.framebuffer_width) * 0.5, @intToFloat(f32, t.framebuffer_height) * 0.5, 0));
-    t.view = mat4x4_identity.translateByVec(offset);
+    if (t.session.findFirstObject(Follow)) |follow|
+        t.view = follow.data.getViewMatrix();
+
     t.debug_console.update(elapsed);
     t.session.applyRemovals();
 
@@ -350,6 +371,9 @@ pub fn restartGame(t: *Game) void {
     const player_id = prefabs.Player.spawn(gs, prefabs.Player.Params{}) catch unreachable;
     if (gs.find(player_id, Sprite)) |player_sprite| {
         t.player_sprite = player_sprite;
+
+        const follow = Follow.spawn(gs, player_sprite) catch unreachable;
+        follow.offset = vec3(@intToFloat(f32, t.framebuffer_width), @intToFloat(f32, t.framebuffer_height), 0).multScalar(0.5);
     }
 
     const mojulo_id = prefabs.Mojulo.spawn(gs, vec3(0, 0, 0)) catch unreachable;

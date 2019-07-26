@@ -4,11 +4,23 @@ pub const StaticGeometry = struct {
     rect_2d_vertex_buffer: c.GLuint,
     rect_2d_tex_coord_buffer: c.GLuint,
 
+    rect_2d_origin_vertex_buffer: c.GLuint,
+
     triangle_2d_vertex_buffer: c.GLuint,
     triangle_2d_tex_coord_buffer: c.GLuint,
 
     pub fn create() StaticGeometry {
         var sg: StaticGeometry = undefined;
+
+        const rect_2d_origin_vertexes = [_][3]c.GLfloat{
+            [_]c.GLfloat{ -0.5, -0.5, 0.0 },
+            [_]c.GLfloat{ -0.5, 0.5, 0.0 },
+            [_]c.GLfloat{ 0.5, -0.5, 0.0 },
+            [_]c.GLfloat{ 0.5, 0.5, 0.0 },
+        };
+        c.glGenBuffers(1, &sg.rect_2d_origin_vertex_buffer);
+        c.glBindBuffer(c.GL_ARRAY_BUFFER, sg.rect_2d_origin_vertex_buffer);
+        c.glBufferData(c.GL_ARRAY_BUFFER, 4 * 3 * @sizeOf(c.GLfloat), &rect_2d_origin_vertexes[0][0], c.GL_STATIC_DRAW);
 
         const rect_2d_vertexes = [_][3]c.GLfloat{
             [_]c.GLfloat{ 0.0, 0.0, 0.0 },
@@ -54,6 +66,8 @@ pub const StaticGeometry = struct {
     pub fn destroy(sg: *StaticGeometry) void {
         c.glDeleteBuffers(1, &sg.rect_2d_tex_coord_buffer);
         c.glDeleteBuffers(1, &sg.rect_2d_vertex_buffer);
+
+        c.glDeleteBuffers(1, &sg.rect_2d_origin_vertex_buffer);
 
         c.glDeleteBuffers(1, &sg.triangle_2d_vertex_buffer);
         c.glDeleteBuffers(1, &sg.triangle_2d_tex_coord_buffer);

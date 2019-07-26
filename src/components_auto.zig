@@ -1,5 +1,6 @@
 pub const AutoMover = @import("components/automover.zig").AutoMover;
 pub const Destroy_Timer = @import("components/destroy_timer.zig").Destroy_Timer;
+pub const Follow = @import("components/follow.zig").Follow;
 pub const Gun = @import("components/gun.zig").Gun;
 pub const LiveShader = @import("components/liveshader.zig").LiveShader;
 pub const Mojulo = @import("components/mojulo.zig").Mojulo;
@@ -35,6 +36,20 @@ pub const run_Destroy_Timer = GameSession.buildSystem(Destroy_Timer_SystemData, 
 inline fn Destroy_Timer_think(gs: *GameSession, self: Destroy_Timer_SystemData) bool {
     const mod = @import("components/destroy_timer.zig");
     return @inlineCall(mod.update, gs, self.timer);
+}
+        
+usingnamespace @import("session.zig");
+
+const Follow_SystemData = struct {
+    id: EntityId,
+    follow: *Follow,
+};
+
+pub const run_Follow = GameSession.buildSystem(Follow_SystemData, Follow_think);
+
+inline fn Follow_think(gs: *GameSession, self: Follow_SystemData) bool {
+    const mod = @import("components/follow.zig");
+    return @inlineCall(mod.update, gs, self.follow);
 }
         
 usingnamespace @import("session.zig");
@@ -157,6 +172,7 @@ inline fn Transform_think(gs: *GameSession, self: Transform_SystemData) bool {
 pub fn run_ALL(gs: *GameSession) void {
     run_AutoMover(gs);
     run_Destroy_Timer(gs);
+    run_Follow(gs);
     run_Gun(gs);
     run_LiveShader(gs);
     run_Mojulo(gs);

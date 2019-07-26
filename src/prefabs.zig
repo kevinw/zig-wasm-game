@@ -3,13 +3,20 @@ const gbe = @import("gbe");
 const c = @import("components_auto.zig");
 const GameSession = @import("session.zig").GameSession;
 
-fn spawn_entity(gs: *GameSession, translation: Vec3, parent: ?*c.Transform) !*gbe.ComponentObject(c.Transform) {
+fn spawn_entity(gs: *GameSession, translation: Vec3, scale: Vec3, parent: ?*c.Transform) !*gbe.ComponentObject(c.Transform) {
     const entity_id = gs.spawn();
     errdefer gs.undoSpawn(entity_id);
 
-    const m = Mat4x4.identity.translate(translation.x, translation.y, translation.z);
-    const transform = try gs.addComponent(entity_id, c.Transform{ .local_matrix = m });
-    _ = try gs.addComponent(entity_id, c.AutoMover{});
+    const xform = c.Transform{
+        .position = translation,
+        .scale = scale,
+    };
+
+    const transform = try gs.addComponent(entity_id, xform);
+    //if (parent) |p| {} else {
+    //_ = try gs.addComponent(entity_id, c.AutoMover{});
+    //}
+
     _ = try gs.addComponent(entity_id, c.Renderer{ .transform = &transform.data });
 
     if (parent) |p| {
@@ -20,9 +27,9 @@ fn spawn_entity(gs: *GameSession, translation: Vec3, parent: ?*c.Transform) !*gb
 }
 
 pub fn spawn_solar_system(gs: *GameSession) !gbe.EntityId {
-    const sun = try spawn_entity(gs, vec3(0, 0, 0), null);
-    const earth = try spawn_entity(gs, vec3(100, 0, 0), &sun.data);
-    const moon = try spawn_entity(gs, vec3(20, 0, 0), &earth.data);
+    const sun = try spawn_entity(gs, vec3(0, 0, 0), vec3(30, 30, 1), null);
+    const earth = try spawn_entity(gs, vec3(80, 0, 0), vec3(0.2, 0.2, 1), &sun.data);
+    const moon = try spawn_entity(gs, vec3(10, 0, 0), vec3(0.5, 0.5, 1), &earth.data);
     return sun.entity_id;
 }
 

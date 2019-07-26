@@ -100,7 +100,7 @@ pub const Mat4x4 = struct {
         };
     }
 
-    pub fn translateByVec(m: Mat4x4, v: Vec3) Mat4x4 {
+    pub inline fn translateVec(m: Mat4x4, v: Vec3) Mat4x4 {
         return m.translate(v.x, v.y, v.z);
     }
 
@@ -115,6 +115,10 @@ pub const Mat4x4 = struct {
                 [_]f32{ m.data[3][0] * x, m.data[3][1] * y, m.data[3][2] * z, m.data[3][3] },
             },
         };
+    }
+
+    pub inline fn scaleVec(m: Mat4x4, v: Vec3) Mat4x4 {
+        return m.scale(v.x, v.y, v.z);
     }
 
     pub fn transpose(m: Mat4x4) Mat4x4 {
