@@ -12,6 +12,7 @@ pub const GameSession = gbe.Session(struct {
     Follow: gbe.ComponentList(Follow, 10),
     Gun: gbe.ComponentList(Gun, 10),
     LiveShader: gbe.ComponentList(LiveShader, 100),
+    Maypole: gbe.ComponentList(Maypole, 10),
     Mojulo: gbe.ComponentList(Mojulo, 20),
     Mover: gbe.ComponentList(Mover, 100),
     Player: gbe.ComponentList(Player, 4),

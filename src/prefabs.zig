@@ -43,6 +43,26 @@ pub fn spawn_solar_system(gs: *GameSession) !gbe.EntityId {
     return solar_system.entity_id;
 }
 
+pub fn spawn_entity_with_components(gs: *GameSession, args: ...) !gbe.EntityId {
+    const entity_id = gs.spawn();
+    errdefer gs.undoSpawn(entity_id);
+
+    comptime var i: usize = 0;
+    inline while (i < args.len) : (i += 1)
+        _ = try gs.addComponent(entity_id, args[i]);
+
+    return entity_id;
+}
+
+pub fn spawn_maypole(gs: *GameSession) !gbe.EntityId {
+    const entity_id = gs.spawn();
+    errdefer gs.undoSpawn(entity_id);
+
+    _ = try gs.addComponent(entity_id, c.Maypole{});
+
+    return entity_id;
+}
+
 pub const Player = struct {
     pub const Params = struct {};
 
@@ -51,6 +71,7 @@ pub const Player = struct {
         errdefer gs.undoSpawn(entity_id);
 
         _ = try gs.addComponent(entity_id, c.Player{});
+        _ = try gs.addComponent(entity_id, c.Transform{});
         _ = try gs.addComponent(entity_id, c.Sprite{});
         _ = try gs.addComponent(entity_id, c.Gun{ .offset = vec3(24, 24, 0) });
 

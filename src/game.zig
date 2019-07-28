@@ -369,6 +369,15 @@ pub fn restartGame(t: *Game) void {
     const ss = prefabs.spawn_solar_system(gs);
 
     const player_id = prefabs.Player.spawn(gs, prefabs.Player.Params{}) catch unreachable;
+
+    const player_transform = gs.find(player_id, Transform).?;
+    _ = prefabs.spawn_entity_with_components(
+        gs,
+        Maypole{ .target = player_transform },
+        Transform{ .position = vec3(100, 100, 0) },
+        Sprite{},
+    ) catch unreachable;
+
     if (gs.find(player_id, Sprite)) |player_sprite| {
         t.player_sprite = player_sprite;
 

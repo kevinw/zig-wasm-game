@@ -3,6 +3,7 @@ pub const Destroy_Timer = @import("components/destroy_timer.zig").Destroy_Timer;
 pub const Follow = @import("components/follow.zig").Follow;
 pub const Gun = @import("components/gun.zig").Gun;
 pub const LiveShader = @import("components/liveshader.zig").LiveShader;
+pub const Maypole = @import("components/maypole.zig").Maypole;
 pub const Mojulo = @import("components/mojulo.zig").Mojulo;
 pub const Mover = @import("components/mover.zig").Mover;
 pub const Player = @import("components/player.zig").Player;
@@ -79,6 +80,20 @@ pub const run_LiveShader = GameSession.buildSystem(LiveShader_SystemData, LiveSh
 inline fn LiveShader_think(gs: *GameSession, self: LiveShader_SystemData) bool {
     const mod = @import("components/liveshader.zig");
     return @inlineCall(mod.update, gs, self.live_shader);
+}
+        
+usingnamespace @import("session.zig");
+
+const Maypole_SystemData = struct {
+    id: EntityId,
+    maypole: *Maypole,
+};
+
+pub const run_Maypole = GameSession.buildSystem(Maypole_SystemData, Maypole_think);
+
+inline fn Maypole_think(gs: *GameSession, self: Maypole_SystemData) bool {
+    const mod = @import("components/maypole.zig");
+    return @inlineCall(mod.update, gs, self.maypole);
 }
         
 usingnamespace @import("session.zig");
@@ -175,6 +190,7 @@ pub fn run_ALL(gs: *GameSession) void {
     run_Follow(gs);
     run_Gun(gs);
     run_LiveShader(gs);
+    run_Maypole(gs);
     run_Mojulo(gs);
     run_Mover(gs);
     run_Player(gs);
