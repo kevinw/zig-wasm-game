@@ -54,15 +54,6 @@ pub fn spawn_entity_with_components(gs: *GameSession, args: ...) !gbe.EntityId {
     return entity_id;
 }
 
-pub fn spawn_maypole(gs: *GameSession) !gbe.EntityId {
-    const entity_id = gs.spawn();
-    errdefer gs.undoSpawn(entity_id);
-
-    _ = try gs.addComponent(entity_id, c.Maypole{});
-
-    return entity_id;
-}
-
 pub const Player = struct {
     pub const Params = struct {};
 
@@ -71,7 +62,8 @@ pub const Player = struct {
         errdefer gs.undoSpawn(entity_id);
 
         _ = try gs.addComponent(entity_id, c.Player{});
-        _ = try gs.addComponent(entity_id, c.Transform{});
+        const xform = try gs.addComponent(entity_id, c.Transform{ .scale = vec3(4, 4, 1) });
+        _ = try gs.addComponent(entity_id, c.Renderer{ .transform = &xform.data });
         _ = try gs.addComponent(entity_id, c.Sprite{});
         _ = try gs.addComponent(entity_id, c.Gun{ .offset = vec3(24, 24, 0) });
 
@@ -86,6 +78,8 @@ pub const Bullet = struct {
         const game_state = &@import("game.zig").game_state; // TODO: no
 
         _ = try gs.addComponent(entity_id, c.Sprite{ .pos = pos, .spritesheet = &game_state.bullet_sprite });
+        const xform = try gs.addComponent(entity_id, c.Transform{ .position = pos, .scale = vec3(4, 4, 1) });
+        _ = try gs.addComponent(entity_id, c.Renderer{ .transform = &xform.data });
         _ = try gs.addComponent(entity_id, c.Mover{ .vel = vel });
         _ = try gs.addComponent(entity_id, c.Destroy_Timer{ .secs_left = 1.5 });
 

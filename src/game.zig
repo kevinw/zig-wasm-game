@@ -26,7 +26,7 @@ const WHITE = vec4(1, 1, 1, 1);
 pub var game_state: Game = undefined;
 
 pub const DrawOpts = struct {
-    sprites: bool = true,
+    sprites: bool = false,
     mojulos: bool = true,
     renderers: bool = true,
 };
@@ -49,8 +49,11 @@ pub const Game = struct {
     game_over: bool,
     font: Spritesheet,
     player_sprite: *Sprite,
+
     player: Spritesheet,
     bullet_sprite: Spritesheet,
+    maypole_sprite: Spritesheet,
+
     ghost_y: i32,
     framebuffer_width: c_int,
     framebuffer_height: c_int,
@@ -72,6 +75,7 @@ pub const Game = struct {
         const fetch = @import("fetch.zig");
         fetch.fromCellSize("assets/rocket.png", &self.player, 16, 16) catch unreachable;
         fetch.fromCellSize("assets/bullet.png", &self.bullet_sprite, 10, 10) catch unreachable;
+        fetch.fromCellSize("assets/maypole.png", &self.maypole_sprite, 16, 64) catch unreachable;
     }
 
     pub fn cycleEquation(self: *Self, delta: i32) void {
@@ -240,6 +244,14 @@ pub fn draw(t: *Game) void {
             const renderer = object.data;
 
             const mvp = t.projection.mult(t.view.mult(renderer.getLocalToWorldMatrix()));
+
+            const sprite_maybe = t.session.find(object.entity_id, Sprite);
+            if (sprite_maybe) |sprite| {
+                if (sprite.spritesheet) |spritesheet| {
+                    spritesheet.draw(t.all_shaders, sprite.index, mvp, vec4(1, 1, 1, 1));
+                    continue;
+                }
+            }
             fillRectMvp(t, vec4(1, 1, 1, 1), mvp, true);
         }
     }
@@ -303,10 +315,6 @@ pub fn userTogglePause(t: *Game) void {
     t.is_paused = !t.is_paused;
 }
 
-pub fn didImageLoad() void {
-    tetris_state.is_loading = false;
-}
-
 var equation_text: []const u8 = "fract(pow(x, y/time))*400.0";
 
 comptime {
@@ -347,15 +355,7 @@ const vert = @embedFile(ASSETS ++ "mojulo_vert.glsl");
 const fragTemplate = @embedFile(ASSETS ++ "mojulo_frag.glsl");
 
 pub fn setEquation(t: *Game) void {
-    const eq = equations[@intCast(usize, t.equation_index)];
-
-    //update_equation_text(eq);
-    //const frag = std.mem.concat(c.allocator, u8, [_][]const u8{ fragTemplate, equation_text }) catch unreachable;
-
-    //t.test_shader.destroy();
-    //t.test_shader = ShaderProgram.create(vert, frag, null);
-
-    t.mojulo.?.setEquation(eq) catch unreachable;
+    t.mojulo.?.setEquation(equations[@intCast(usize, t.equation_index)]) catch unreachable;
 }
 
 pub fn restartGame(t: *Game) void {
@@ -374,16 +374,16 @@ pub fn restartGame(t: *Game) void {
     _ = prefabs.spawn_entity_with_components(
         gs,
         Maypole{ .target = player_transform },
-        Transform{ .position = vec3(100, 100, 0) },
-        Sprite{},
+        Transform{ .position = vec3(-30, -30, 0), .scale = vec3(4, 4, 1) },
+        Sprite{ .spritesheet = &t.maypole_sprite },
     ) catch unreachable;
 
     if (gs.find(player_id, Sprite)) |player_sprite| {
         t.player_sprite = player_sprite;
-
-        const follow = Follow.spawn(gs, player_sprite) catch unreachable;
-        follow.offset = vec3(@intToFloat(f32, t.framebuffer_width), @intToFloat(f32, t.framebuffer_height), 0).multScalar(0.5);
     }
+
+    const follow = Follow.spawn(gs, gs.find(player_id, Transform).?) catch unreachable;
+    follow.offset = vec3(@intToFloat(f32, t.framebuffer_width), @intToFloat(f32, t.framebuffer_height), 0).multScalar(0.5);
 
     const mojulo_id = prefabs.Mojulo.spawn(gs, vec3(0, 0, 0)) catch unreachable;
     if (gs.find(mojulo_id, Mojulo)) |mojulo| {
@@ -400,9 +400,8 @@ pub fn restartGame(t: *Game) void {
 
     setEquation(t);
 
-    if (t.session.findFirst(Sprite)) |spr| {
+    if (t.session.findFirst(Sprite)) |spr|
         spr.spritesheet = &t.player;
-    }
 }
 
 pub fn resetProjection(t: *Game) void {

@@ -4,7 +4,7 @@ usingnamespace @import("../globals.zig");
 
 const GameSession = @import("../session.zig").GameSession;
 const Bullet = @import("bullet.zig").Bullet;
-const Sprite = @import("sprite.zig").Sprite;
+const Transform = @import("transform.zig").Transform;
 const prefabs = @import("../prefabs.zig");
 
 pub const Gun = struct {
@@ -21,7 +21,7 @@ pub const Gun = struct {
     bullet_speed: f32 = 400,
 };
 
-pub fn update(gs: *GameSession, gun: *Gun, sprite: *Sprite) bool {
+pub fn update(gs: *GameSession, gun: *Gun, transform: *Transform) bool {
     const now = Time.time;
     if (now - gun.last_fire_time <= gun.fire_delay) return true;
 
@@ -37,7 +37,7 @@ pub fn update(gs: *GameSession, gun: *Gun, sprite: *Sprite) bool {
         dir = dir.multScalar(gun.bullet_speed);
         //log("{} {} {}", dir.x, dir.y, dir.z);
 
-        const origin = sprite.pos.add(gun.offset);
+        const origin = transform.position.add(gun.offset);
         _ = fire(gs, origin, dir) catch unreachable;
         gun.last_fire_time = now;
     }

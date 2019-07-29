@@ -7,13 +7,15 @@ const c = @import("../platform.zig");
 
 const Sprite = @import("sprite.zig").Sprite;
 const Gun = @import("gun.zig").Gun;
+const Transform = @import("transform.zig").Transform;
+
 const platform_input = @import("../platform/platform_input.zig");
 
 pub const Player = struct {
     speed: f32 = 500,
 };
 
-pub fn update(gs: *GameSession, player: *Player, sprite: *Sprite, gun: *Gun) bool {
+pub fn update(gs: *GameSession, player: *Player, sprite: *Sprite, xform: *Transform, gun: *Gun) bool {
     const speed: f32 = @floatCast(f32, Time.delta_time * player.speed);
 
     var delta = Vec2.zero;
@@ -31,8 +33,11 @@ pub fn update(gs: *GameSession, player: *Player, sprite: *Sprite, gun: *Gun) boo
         delta = delta.normalize().scale(std.math.min(speed, delta.length()));
     }
 
-    sprite.pos.x += delta.x;
-    sprite.pos.y += delta.y;
+    xform.position.x += delta.x;
+    xform.position.y += delta.y;
+
+    //sprite.pos.x += delta.x;
+    //sprite.pos.y += delta.y;
 
     gun.fire_right = Input.getKey(c.KEY_L);
     gun.fire_left = Input.getKey(c.KEY_J);

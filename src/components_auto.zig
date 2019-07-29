@@ -58,14 +58,14 @@ usingnamespace @import("session.zig");
 const Gun_SystemData = struct {
     id: EntityId,
     gun: *Gun,
-    sprite: *Sprite,
+    transform: *Transform,
 };
 
 pub const run_Gun = GameSession.buildSystem(Gun_SystemData, Gun_think);
 
 inline fn Gun_think(gs: *GameSession, self: Gun_SystemData) bool {
     const mod = @import("components/gun.zig");
-    return @inlineCall(mod.update, gs, self.gun, self.sprite);
+    return @inlineCall(mod.update, gs, self.gun, self.transform);
 }
         
 usingnamespace @import("session.zig");
@@ -87,13 +87,14 @@ usingnamespace @import("session.zig");
 const Maypole_SystemData = struct {
     id: EntityId,
     maypole: *Maypole,
+    player: *Sprite,
 };
 
 pub const run_Maypole = GameSession.buildSystem(Maypole_SystemData, Maypole_think);
 
 inline fn Maypole_think(gs: *GameSession, self: Maypole_SystemData) bool {
     const mod = @import("components/maypole.zig");
-    return @inlineCall(mod.update, gs, self.maypole);
+    return @inlineCall(mod.update, gs, self.maypole, self.player);
 }
         
 usingnamespace @import("session.zig");
@@ -115,14 +116,14 @@ usingnamespace @import("session.zig");
 const Mover_SystemData = struct {
     id: EntityId,
     mover: *Mover,
-    sprite: *Sprite,
+    transform: *Transform,
 };
 
 pub const run_Mover = GameSession.buildSystem(Mover_SystemData, Mover_think);
 
 inline fn Mover_think(gs: *GameSession, self: Mover_SystemData) bool {
     const mod = @import("components/mover.zig");
-    return @inlineCall(mod.update, gs, self.mover, self.sprite);
+    return @inlineCall(mod.update, gs, self.mover, self.transform);
 }
         
 usingnamespace @import("session.zig");
@@ -131,6 +132,7 @@ const Player_SystemData = struct {
     id: EntityId,
     player: *Player,
     sprite: *Sprite,
+    xform: *Transform,
     gun: *Gun,
 };
 
@@ -138,7 +140,7 @@ pub const run_Player = GameSession.buildSystem(Player_SystemData, Player_think);
 
 inline fn Player_think(gs: *GameSession, self: Player_SystemData) bool {
     const mod = @import("components/player.zig");
-    return @inlineCall(mod.update, gs, self.player, self.sprite, self.gun);
+    return @inlineCall(mod.update, gs, self.player, self.sprite, self.xform, self.gun);
 }
         
 usingnamespace @import("session.zig");
