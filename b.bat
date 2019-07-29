@@ -7,4 +7,4 @@ REM zig build-lib --pkg-begin gbe gbe/src/gbe.zig --cache off --color on -target
 zig build wasm
 
 if %errorlevel% neq 0 exit /b %errorlevel%
-echo Compiled successfully at %time%
+echo Compiled wasm successfully at %time%

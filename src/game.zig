@@ -346,6 +346,14 @@ pub fn update_equation_text(eq_text: []const u8) void {
 }
 
 pub fn init(t: *Game) void {
+    t.debug_console = @typeOf(t.debug_console).init(c.allocator);
+
+    c.glClearColor(0.0, 0.0, 0.0, 1.0);
+    c.glEnable(c.GL_BLEND);
+    c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
+    c.glPixelStorei(c.GL_UNPACK_ALIGNMENT, 1);
+    c.glViewport(0, 0, t.framebuffer_width, t.framebuffer_height);
+
     resetProjection(t);
     restartGame(t);
 }

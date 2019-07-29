@@ -32,6 +32,7 @@ extern fn keyCallback(window: ?*c.GLFWwindow, key: c_int, scancode: c_int, actio
     switch (key) {
         c.GLFW_KEY_ESCAPE => c.glfwSetWindowShouldClose(window, c.GL_TRUE),
         c.GLFW_KEY_R => game.restartGame(t),
+        c.GLFW_KEY_L => game.logMessage(t),
         c.GLFW_KEY_P => t.cycleEquation(-1),
         c.GLFW_KEY_N => t.cycleEquation(1),
         else => {},
@@ -117,17 +118,9 @@ pub fn main() !void {
     const randomSeed: u64 = 42;
     t.prng = std.rand.DefaultPrng.init(randomSeed);
     t.rand = &t.prng.random;
-
-    game.init(t);
-
-    c.glClearColor(0.0, 0.0, 0.0, 1.0);
-    c.glEnable(c.GL_BLEND);
-    c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
-    c.glPixelStorei(c.GL_UNPACK_ALIGNMENT, 1);
-
-    c.glViewport(0, 0, t.framebuffer_width, t.framebuffer_height);
     c.glfwSetWindowUserPointer(window, @ptrCast(*c_void, t));
 
+    game.init(t);
     debug_gl.assertNoError();
 
     t.load_resources();

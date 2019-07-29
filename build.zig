@@ -77,6 +77,7 @@ pub fn createNativeStep(b: *Builder) *LibExeObjStep {
 
 pub fn build(b: *Builder) void {
     const exe = createNativeStep(b);
+    exe.setOutputDir(".");
     b.default_step.dependOn(&exe.step);
 
     // create a "play" command for running the native build
@@ -84,7 +85,6 @@ pub fn build(b: *Builder) void {
     const play = b.step("play", "Play the native build");
     play.dependOn(&run.step);
 
-    b.setInstallPrefix(".");
     const wasmLib = createWasmStep(b);
     wasmLib.setOutputDir(".");
     const wasmStep = b.step("wasm", "Build for WASM");

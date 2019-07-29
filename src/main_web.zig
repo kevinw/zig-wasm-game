@@ -89,20 +89,11 @@ export fn onInit(width: c_uint, height: c_uint) void {
     t.static_geometry = StaticGeometry.create();
     t.font.init(font_raw, game.font_char_width, game.font_char_height) catch unreachable;
 
-    t.debug_console = @typeOf(t.debug_console).init(c.allocator);
-
     t.prng = std.rand.DefaultPrng.init(@intCast(u64, c.getRandomSeed()));
     t.rand = &t.prng.random;
 
     game.resetProjection(t);
-    game.restartGame(t);
-
-    c.glClearColor(0.0, 0.0, 0.0, 1.0);
-    c.glEnable(c.GL_BLEND);
-    c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
-    c.glPixelStorei(c.GL_UNPACK_ALIGNMENT, 1);
-
-    c.glViewport(0, 0, t.framebuffer_width, t.framebuffer_height);
+    game.init(t);
 
     debug_gl.assertNoError();
 

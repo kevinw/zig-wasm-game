@@ -1,5 +1,6 @@
 zig-cache/
 .vs/
+game.exe
 tetris
 node_modules/
 output.txt
