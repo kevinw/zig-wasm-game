@@ -1,10 +1,14 @@
 - move most stuff from main.zig into main_native.zig
 - opengl shader cache https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glGetProgramBinary.xhtml
 - how to easily apply FXAA to the equation quad? or do super sampling?
-- make main.zig forward functions to main_web or main_native
 - the real pain for development is that lack of a quick GUI like html provides
     - solution is to try imgui or nucklear or ? and make the UI with that. web becomes fullscreen just like native
         - always be playing the game in fullscreen mode?
 live reload of shader code--how to work with asset pipeline?
     - easiest answer is to have the live reload shader watch .glsl files
 https://prideout.net/blog/par_streamlines/
+
+
+DONE
+
+x make main.zig forward functions to main_web or main_native

@@ -1,1 +1,1 @@
-@zig build play
+@zig build play -Drelease-fast=true

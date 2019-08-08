@@ -54,6 +54,8 @@ pub const Game = struct {
     bullet_sprite: Spritesheet,
     maypole_sprite: Spritesheet,
 
+    next_equation_timer:f64,
+
     ghost_y: i32,
     framebuffer_width: c_int,
     framebuffer_height: c_int,
@@ -293,6 +295,12 @@ pub fn nextFrame(t: *Game, elapsed: f64) void {
 
     Time._update_next_frame(elapsed);
 
+    t.next_equation_timer -= elapsed;
+    if (t.next_equation_timer <= 0) {
+        t.next_equation_timer = 9;
+        t.cycleEquation(1);
+    }
+
     @import("components_auto.zig").run_ALL(&t.session);
 
     if (t.session.findFirstObject(Follow)) |follow|
@@ -368,6 +376,7 @@ pub fn setEquation(t: *Game) void {
 
 pub fn restartGame(t: *Game) void {
     t.draw_opts = DrawOpts{};
+    t.next_equation_timer = 6;
     t.game_over = false;
     t.is_paused = false;
     t.debug_console.reset();
