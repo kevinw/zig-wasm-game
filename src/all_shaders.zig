@@ -266,7 +266,7 @@ pub const ShaderProgram = struct {
             c.GL_FLOAT_VEC2 => "GL_FLOAT_VEC2",
             c.GL_FLOAT_VEC3 => "GL_FLOAT_VEC3",
             c.GL_FLOAT_VEC4 => "GL_FLOAT_VEC4",
-            else => "unknown",
+            else => "unknown (TODO: impl)",
         };
     }
 
