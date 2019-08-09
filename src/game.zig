@@ -99,9 +99,10 @@ pub const font_char_height = 32;
 const a: f32 = 0.1;
 
 const equations = [_][]const u8{
-    "fract(pow(x, y/time))*400.0",
+    "px*py",
+    "(((((sin(A * 20 + time/14) + 2) * 30 + (cos(r * (20 + sin(A * 2 + time/41) * 5) + time/22) + 4) * 30) + (sin(px * time / py / 1000) + 2) * 5 - 20)*0x0000ff)&0x00ff00) + (((((sin(A * 20 + time/7) + 2) * 30 + (cos(r * (20 + sin(A * 2 + time/83) * 5) + time/11) + 4) * 30) + (sin(px * time / py / 1000) + 2) * 5 - 20)*1)&0x0000ff) + (((((sin(A * 20 + time/3.5) + 2) * 30 + (cos(r * (20 + sin(A * 2 + time/166) * 5) + time/6) + 4) * 30) + (sin(px * time / py / 1000) + 2) * 5 - 20)*0x00ff00)&0xff0000)",
     "(x-time)*pow(x, 0.001*x*y)",
-    "(((((sin(A * 20 + time/14) + 2) * 30 + (cos(r * (20 + sin(A * 2 + time/41) * 5) + time/22) + 4) * 30) + (sin(x * time / y / 1000) + 2) * 5 - 20)*0x0000ff)&0x00ff00) + (((((sin(A * 20 + time/7) + 2) * 30 + (cos(r * (20 + sin(A * 2 + time/83) * 5) + time/11) + 4) * 30) + (sin(x * time / y / 1000) + 2) * 5 - 20)*1)&0x0000ff) + (((((sin(A * 20 + time/3.5) + 2) * 30 + (cos(r * (20 + sin(A * 2 + time/166) * 5) + time/6) + 4) * 30) + (sin(x * time / y / 1000) + 2) * 5 - 20)*0x00ff00)&0xff0000)",
+    "fract(pow(x, y/time))*400.0",
     "10  + 165 * sin(2.5+ (y-50) / 26 ) + 90*sin( time*0.7 - ((0.1*( x - 50 )^2 + (y-50)^2 )^0.45) ) - 255 * (1 + (((x-1) % 50) - (x % 50))) * (1 + (( (y+30-(time%18)-1) % 10) - ( (y+30-(time%18)) % 10))) * ((y%50) + (50-y)%50)",
     "((time-x+y)|(time-y+x)|(time+x+y)|(time-x-y))^6", // TODO: why is this one so different? https://maxbittker.github.io/Mojulo/#KCh0aW1lLXgreSl8KHRpbWUteSt4KXwodGltZSt4K3kpfCh0aW1lLXgteSkpXjY=
     "(y*x-(time*1))&(y+(cos(r*0.01*time)))",
@@ -295,7 +296,7 @@ pub fn nextFrame(t: *Game, elapsed: f64) void {
     Time._update_next_frame(elapsed);
 
     t.next_equation_timer -= elapsed;
-    if (t.next_equation_timer <= 0) {
+    if (false and t.next_equation_timer <= 0) {
         t.next_equation_timer = 9;
         t.cycleEquation(1);
     }
@@ -370,7 +371,9 @@ const vert = @embedFile(ASSETS ++ "mojulo_vert.glsl");
 const fragTemplate = @embedFile(ASSETS ++ "mojulo_frag.glsl");
 
 pub fn setEquation(t: *Game) void {
-    t.mojulo.?.setEquation(equations[@intCast(usize, t.equation_index)]) catch unreachable;
+    const eq = equations[@intCast(usize, t.equation_index)];
+    t.debug_console.log(eq);
+    t.mojulo.?.setEquation(eq) catch unreachable;
 }
 
 pub fn restartGame(t: *Game) void {

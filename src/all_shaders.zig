@@ -173,7 +173,7 @@ pub const ShaderProgram = struct {
 
         switch (@typeId(@typeOf(value))) {
             .Int => c.glUniform1i(uniform_id, value),
-            .Float => c.glUniform1f(uniform_id, value),
+            .ComptimeFloat, .Float => c.glUniform1f(uniform_id, value),
             .Struct => {
                 switch (@typeOf(value)) {
                     Vec3 => {
@@ -190,7 +190,7 @@ pub const ShaderProgram = struct {
                     },
                 }
             },
-            else => @compileError("invalid type to setUniform"),
+            else => @compileError("invalid type to setUniform")
         }
 
         debug_gl.assertNoErrorFormat("error setting uniform '{}' (location {})", uniform, uniform_id);

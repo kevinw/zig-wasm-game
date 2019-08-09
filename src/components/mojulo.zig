@@ -2,6 +2,7 @@
 
 const std = @import("std");
 const c = @import("../platform.zig");
+usingnamespace @import("../globals.zig");
 const GameSession = @import("../session.zig").GameSession;
 const Transform = @import("./transform.zig").Transform;
 const ShaderProgram = @import("../all_shaders.zig").ShaderProgram;
@@ -30,10 +31,40 @@ pub const Mojulo = struct {
     }
 };
 
+const game = @import("../game.zig");
+
+fn worldToScreenPoint(world_position: Vec3, t: *game.Game) Vec3 {
+    // calculate view-projection matrix
+    const mat = t.projection.mult(t.view); 
+
+    // multiply world point by VP matrix
+    //Vector4 temp = mat * new Vector4(wp.x, wp.y, wp.z, 1f);
+    var temp = mat.multVec4(vec4(world_position.x, world_position.y, world_position.z, 1));
+    if (temp.w == 0) {
+        // point is exactly on camera focus point, screen point is undefined
+        // unity handles this by returning 0,0,0
+        return Vec3.zero;
+    } else {
+        // convert x and y from clip space to window coordinates
+        temp.x = (temp.x/temp.w + 1)*0.5 * @intToFloat(f32, t.framebuffer_width);
+        temp.y = (temp.y/temp.w + 1)*0.5 * @intToFloat(f32, t.framebuffer_height);
+        return vec3(temp.x, temp.y, world_position.z);
+    }
+
+}
+
 pub fn update(gs: *GameSession, m: *Mojulo) bool {
-    if (m.origin_transform) |xform|
-        if (m.shader) |*shader|
-            shader.setUniformMaybe("playerPos", xform.position);
+    if (m.origin_transform) |xform| {
+        if (m.shader) |*shader| {
+
+            const t = &game.game_state;
+            //const p = worldToScreenPoint(xform.position, t);
+            const p = xform.position;
+
+            shader.setUniform("playerPos", p);
+            shader.setUniform("playerScale", 0.079);
+        }
+    }
 
     return true;
 }

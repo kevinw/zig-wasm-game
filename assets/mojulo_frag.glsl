@@ -6,6 +6,7 @@ out vec4 FragColor;
 uniform vec4 Color;
 uniform vec3 camPos;
 uniform vec3 playerPos;
+uniform float playerScale;
 uniform float time;
 
 float randFromVec2(vec2 co){
@@ -34,8 +35,10 @@ void main(void) {
 }
 
 float equation() {
-    float x = FragTexCoord.x * 100.0 + camPos.x + playerPos.x;
-    float y = FragTexCoord.y * 100.0 + camPos.y + playerPos.y;
+    float x = FragTexCoord.x * 100.0 + camPos.x;
+    float y = FragTexCoord.y * 100.0 + camPos.y;
+    float px = x - (playerPos.x * playerScale);
+    float py = y - (playerPos.y * playerScale);
     float A = atan(y, x);
     float r = sqrt(x * x + y * y);
 

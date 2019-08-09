@@ -1,10 +1,22 @@
 const std = @import("std");
+
 const assert = std.debug.assert;
 
 pub const Mat4x4 = struct {
     pub const identity = mat4x4_identity;
 
     data: [4][4]f32,
+
+    pub fn multVec4(_m: Mat4x4, _v: Vec4) Vec4 {
+        const m = &_m.data;
+        const v = _v.ptrConst();
+        return vec4(
+            m[0][0]*v[0] + m[1][0]*v[1] + m[2][0]*v[2] + m[3][0]*v[3],
+            m[0][1]*v[0] + m[1][1]*v[1] + m[2][1]*v[2] + m[3][1]*v[3],
+            m[0][2]*v[0] + m[1][2]*v[1] + m[2][2]*v[2] + m[3][2]*v[3],
+            m[0][3]*v[0] + m[1][3]*v[1] + m[2][3]*v[2] + m[3][3]*v[3],
+        );
+    }
 
     /// matrix multiplication
     pub fn mult(m: Mat4x4, other: Mat4x4) Mat4x4 {
@@ -258,16 +270,26 @@ pub const Vec2 = struct {
     pub const zero = Vec2{ .x = 0, .y = 0 };
 };
 
+
 pub const Vec4 = struct {
     x: f32,
     y: f32,
     z: f32,
     w: f32,
 
+    pub const zero = Vec4{ .x = 0, .y = 0, .z = 0, .w = 0 };
+    pub const one = Vec4{ .x = 1, .y = 1, .z = 1, .w = 0 };
+
     pub fn ptr(self: *Vec4) *f32 {
         return &self.x;
     }
+
+    pub fn ptrConst(self: *const Vec4) []f32 {
+        return @ptrCast([*]const f32, &self.x)[0..4];
+    }
 };
+
+
 
 pub fn vec4(xa: f32, xb: f32, xc: f32, xd: f32) Vec4 {
     return Vec4{
@@ -415,4 +437,9 @@ test "rotate" {
 
     const actual = m1.rotate(angle, axis);
     assertMatrixEq(actual, expected);
+}
+
+test "multiply matrices by vectors" {
+    assert(std.mem.eql(f32, Mat4x4.identity.multVec4(Vec4.zero).ptrConst(), Vec4.zero.ptrConst()));
+    assert(std.mem.eql(f32, Mat4x4.identity.multVec4(Vec4.one).ptrConst(), Vec4.one.ptrConst()));
 }

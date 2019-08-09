@@ -45,6 +45,9 @@ pub const DebugConsole = struct {
             _ = self.entries.orderedRemove(0);
         }
 
+        //var buf: [1000]u8 = undefined;
+        //const text = std.fmt.bufPrint(buf[0..], message, args) catch unreachable;
+
         self.entries.append(ConsoleEntry{
             .time = self.now,
             .message = message,
