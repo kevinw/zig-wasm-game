@@ -22,7 +22,11 @@ pub const Mojulo = struct {
         defer c.allocator.free(frag);
 
         if (self.shader) |*shader| shader.destroy();
-        self.shader = ShaderProgram.create(vert, frag, null);
+        const new_shader = ShaderProgram.create(vert, frag, null);
+        self.shader = new_shader;
+
+        var uniforms = ShaderProgram.UniformList.init(c.allocator);
+        new_shader.getUniforms(&uniforms);
     }
 };
 

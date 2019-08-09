@@ -107,6 +107,8 @@ def main():
     to_import = dict()
     all_lines = []
     for filename in os.listdir(path_to_components):
+        if not filename.lower().endswith(".zig"):
+            continue
         full_filename = os.path.join(path_to_components, filename)
         try:
             all_lines.extend(process_component_file(output, full_filename, to_import))

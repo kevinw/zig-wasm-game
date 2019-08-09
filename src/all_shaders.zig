@@ -95,6 +95,8 @@ pub const AllShaders = struct {
 };
 
 pub const ShaderProgram = struct {
+    const Self = @This();
+
     program_id: c.GLuint = 0,
     vertex_id: c.GLuint,
     fragment_id: c.GLuint,
@@ -232,6 +234,42 @@ pub const ShaderProgram = struct {
     pub fn setUniformMat4x4ByName(sp: ShaderProgram, comptime name: []const u8, value: Mat4x4) void {
         const location = sp.uniformLoc(name);
         if (location != -1) c.glUniformMatrix4fv(location, 1, c.GL_FALSE, value.data[0][0..].ptr);
+    }
+
+    pub const UniformPair = struct {
+        name: []const u8,
+        type: i32,
+    };
+
+    pub const UniformList = std.ArrayList(UniformPair);
+
+    fn getGLEnumString(val: c.GLenum) []const u8 {
+        return switch (val) {
+            c.GL_FLOAT => "GL_FLOAT",
+            c.GL_FLOAT_VEC2 => "GL_FLOAT_VEC2",
+            c.GL_FLOAT_VEC3 => "GL_FLOAT_VEC3",
+            c.GL_FLOAT_VEC4 => "GL_FLOAT_VEC4",
+            else => "unknown",
+        };
+    }
+
+    pub fn getUniforms(self: *const Self, list: *UniformList) void {
+        var count:c_int = -1;
+        c.glGetProgramiv(self.program_id, c.GL_ACTIVE_ATTRIBUTES, &count);
+        if (count != -1) {
+            var i:c_int = 0;
+            while (i < count) : (i += 1) {
+                var name: [100]u8 = [_]u8 {'\x00'} ** 100;
+                var size: c_int = 0;
+                var gltype: c_uint = 0;
+                var len: c_int = 0;
+                c.glGetActiveUniform(self.program_id, @intCast(c_uint, i), 100, &len, &size, &gltype, &name);
+                log("got name with len {}: {} and type {}", len, name[0..@intCast(usize, len)], getGLEnumString(@intCast(c.GLenum, gltype)));
+            }
+        } else {
+
+            log("getUniforms didn't return anything");
+        }
     }
 
     pub fn create(

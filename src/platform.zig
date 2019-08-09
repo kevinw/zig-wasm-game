@@ -9,7 +9,12 @@ pub usingnamespace if (is_web) @import("platform/web.zig") else @import("platfor
 pub extern fn setScore(_: c_int) void;
 pub extern fn playAudio(_: [*c]f32, _: c_uint) void;
 
-pub const platform_log = if (is_web) log else std.debug.warn;
+fn stdDebugLog(comptime fmt: []const u8, args: ...) void {
+    std.debug.warn(fmt, args);
+    std.debug.warn("\n");
+}
+
+pub const platform_log = if (is_web) log else stdDebugLog;
 
 pub fn abortReason(comptime format: []const u8, args: ...) noreturn {
     var panic_buf: [255]u8 = undefined;

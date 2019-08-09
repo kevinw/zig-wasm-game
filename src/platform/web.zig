@@ -44,3 +44,9 @@ pub fn linkShaderProgram(vertex_id: c_uint, fragment_id: c_uint, geometry_id: ?c
 pub fn fetchBytesSlice(url: []const u8, token: u32) void {
     wasm.fetchBytes(url.ptr, url.len, token);
 }
+
+pub fn glGetProgramiv(program_id: c_uint, info_type: c_int, value: *c_int) void {
+    const result = webgl.glGetProgramParameter(program_id, info_type);
+    if (result != 0)
+        value.* = result;
+}

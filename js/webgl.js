@@ -210,6 +210,53 @@ const glBindVertexArray = (id) => gl.bindVertexArray(glVertexArrays[id]);
 const glPixelStorei = (type, alignment) => gl.pixelStorei(type, alignment);
 const glGetError = () => gl.getError();
 
+const glGetProgramParameter = (program, type) => gl.getProgramParameter(glPrograms[program], type);
+
+function toUTF8Array(str) {
+    var utf8 = [];
+    for (var i=0; i < str.length; i++) {
+        var charcode = str.charCodeAt(i);
+        if (charcode < 0x80) utf8.push(charcode);
+        else if (charcode < 0x800) {
+            utf8.push(0xc0 | (charcode >> 6), 
+                      0x80 | (charcode & 0x3f));
+        }
+        else if (charcode < 0xd800 || charcode >= 0xe000) {
+            utf8.push(0xe0 | (charcode >> 12), 
+                      0x80 | ((charcode>>6) & 0x3f), 
+                      0x80 | (charcode & 0x3f));
+        }
+        // surrogate pair
+        else {
+            i++;
+            charcode = ((charcode&0x3ff)<<10)|(str.charCodeAt(i)&0x3ff)
+            utf8.push(0xf0 | (charcode >>18), 
+                      0x80 | ((charcode>>12) & 0x3f), 
+                      0x80 | ((charcode>>6) & 0x3f), 
+                      0x80 | (charcode & 0x3f));
+        }
+    }
+    return utf8;
+}
+
+const glGetActiveUniform = (program_id, uniform_index, name_buffer_size, actual_length_ptr, array_size_ptr, type_ptr, name_buffer) => {
+     //glGetActiveUniform(prog, unif, nameData.size(), &actualLength, &arraySize, &type, &nameData[0]);
+    
+    const info = gl.getActiveUniform(glPrograms[program_id], uniform_index);
+    const utf8Name = toUTF8Array(info.name);
+
+    actual_length = Math.min(utf8Name.length, name_buffer_size);
+    //console.log({actual_length, name_buffer_size, info});
+
+    (new Uint32Array(memory.buffer, actual_length_ptr, 1))[0] = actual_length;
+    (new Uint32Array(memory.buffer, array_size_ptr, 1))[0] = info.size;
+    (new Int32Array(memory.buffer, type_ptr, 1))[0] = info.type;
+
+    const view = new Uint8Array(memory.buffer, name_buffer, name_buffer_size);
+    for (let i = 0; i < actual_length; ++i)
+        view[i] = utf8Name[i]; // TODO: nope. unicode needs a shift and a mask
+}
+
 var webgl = {
   glInitShader,
   glLinkShaderProgram,
@@ -253,4 +300,6 @@ var webgl = {
   glBindVertexArray,
   glPixelStorei,
   glGetError,
+  glGetProgramParameter,
+  glGetActiveUniform,
 };

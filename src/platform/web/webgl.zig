@@ -44,6 +44,8 @@ pub extern fn glTexImage2D(_: c_uint, _: c_uint, _: c_uint, _: c_int, _: c_int, 
 pub extern fn glTexParameteri(_: c_uint, _: c_uint, _: c_uint) void;
 pub extern fn glActiveTexture(_: c_uint) void;
 pub extern fn glGetError() c_int;
+pub extern fn glGetProgramParameter(_: c_uint, _: c_int) c_int;
+pub extern fn glGetActiveUniform(program_id: c_uint, uniform_index: c_uint, name_buffer_size: c_uint, actual_length_ptr: [*c]c_int, array_size_ptr: [*c]c_int, type: [*c]c_uint, name_buffer: [*]u8) void;
 
 // Types
 pub const GLuint = c_uint;
@@ -79,11 +81,23 @@ pub const GL_NO_ERROR = 0;
 pub const GL_FALSE = 0;
 pub const GL_TRUE = 1;
 pub const GL_UNPACK_ALIGNMENT = 3317;
+pub const GL_ACTIVE_ATTRIBUTES = 0x8B89;
+pub const GL_FLOAT_VEC2 = 0x8B50;
+pub const GL_FLOAT_VEC3 = 0x8B51;
+pub const GL_FLOAT_VEC4 = 0x8B52;
 
 pub const GL_TEXTURE_WRAP_S = 10242;
 pub const GL_CLAMP_TO_EDGE = 33071;
 pub const GL_TEXTURE_WRAP_T = 10243;
 pub const GL_PACK_ALIGNMENT = 3333;
+pub const GL_BYTE = 0x1400;
+pub const GL_SHORT = 0x1402;
+pub const GL_UNSIGNED_SHORT = 0x1403;
+pub const GL_INT = 0x1404;
+pub const GL_UNSIGNED_INT = 0x1405;
+pub const FLOAT_MAT2 = 0x8B5A;
+pub const FLOAT_MAT3 = 0x8B5B; 
+pub const FLOAT_MAT4 = 0x8B5C;
 
 const AUDIO_BUFFER_SIZE = 8192;
 var beep = []f32{0} ** AUDIO_BUFFER_SIZE;
