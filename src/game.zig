@@ -5,7 +5,6 @@ const std = @import("std");
 const warn = @import("base.zig").warn;
 const os = std.os;
 const c = @import("platform.zig");
-const bufPrint = std.fmt.bufPrint;
 const debug_gl = @import("debug_gl.zig");
 const AllShaders = @import("all_shaders.zig").AllShaders;
 const static_geometry = @import("static_geometry.zig");

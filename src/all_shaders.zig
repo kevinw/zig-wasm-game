@@ -138,8 +138,18 @@ pub const ShaderProgram = struct {
 
         return id;
     }
+    
+    fn setUniform(sp: *Self, uniform: var, value: var) void {
+        c.glUseProgram(sp.program_id);
+        sp.setUniformWithOptional(uniform, value, false);
+    }
 
-    fn setUniform(sp: ShaderProgram, uniform: var, value: var) void {
+    fn setUniformMaybe(sp: *Self, uniform: var, value: var) void {
+        c.glUseProgram(sp.program_id);
+        sp.setUniformWithOptional(uniform, value, true);
+    }
+
+    fn setUniformWithOptional(sp: ShaderProgram, uniform: var, value: var, optional: bool) void {
         const uniform_id: c.GLint = switch (@typeInfo(@typeOf(uniform))) {
             .Array => |a| blk: {
                 // TODO: use a max size so we don't codegen a new copy of this
@@ -155,6 +165,11 @@ pub const ShaderProgram = struct {
             .Int => |i| uniform,
             else => @compileError("unexpected type for uniform: " ++ @typeOf(uniform).name),
         };
+
+        if (optional and uniform_id == 0) {
+            log("ignoring {}", uniform);
+            return;
+        }
 
         switch (@typeId(@typeOf(value))) {
             .Int => c.glUniform1i(uniform_id, value),
@@ -177,6 +192,8 @@ pub const ShaderProgram = struct {
             },
             else => @compileError("invalid type to setUniform"),
         }
+
+        debug_gl.assertNoErrorFormat("error setting uniform '{}' (location {})", uniform, uniform_id);
     }
 
     pub fn setUniformInt(sp: ShaderProgram, uniform_id: c.GLint, value: c_int) void {
@@ -256,19 +273,17 @@ pub const ShaderProgram = struct {
     pub fn getUniforms(self: *const Self, list: *UniformList) void {
         var count:c_int = -1;
         c.glGetProgramiv(self.program_id, c.GL_ACTIVE_ATTRIBUTES, &count);
-        if (count != -1) {
-            var i:c_int = 0;
-            while (i < count) : (i += 1) {
-                var name: [100]u8 = [_]u8 {'\x00'} ** 100;
-                var size: c_int = 0;
-                var gltype: c_uint = 0;
-                var len: c_int = 0;
-                c.glGetActiveUniform(self.program_id, @intCast(c_uint, i), 100, &len, &size, &gltype, &name);
-                log("got name with len {}: {} and type {}", len, name[0..@intCast(usize, len)], getGLEnumString(@intCast(c.GLenum, gltype)));
-            }
-        } else {
-
+        if (count == -1) {
             log("getUniforms didn't return anything");
+            return;
+        }
+        var i:c_int = 0;
+        while (i < count) : (i += 1) {
+            var name: [100]u8 = [_]u8 {'\x00'} ** 100; // TODO
+            var size: c_int = 0;
+            var gltype: c_uint = 0;
+            var len: c_int = 0;
+            c.glGetActiveUniform(self.program_id, @intCast(c_uint, i), 100, &len, &size, &gltype, &name);
         }
     }
 

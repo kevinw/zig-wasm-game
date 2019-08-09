@@ -31,9 +31,9 @@ pub const Mojulo = struct {
 };
 
 pub fn update(gs: *GameSession, m: *Mojulo) bool {
-    //if (m.origin_transform) |xform|
-        //if (m.shader) |shader|
-            //shader.setUniformVec3ByName("playerPos", xform.position);
+    if (m.origin_transform) |xform|
+        if (m.shader) |*shader|
+            shader.setUniformMaybe("playerPos", xform.position);
 
     return true;
 }
