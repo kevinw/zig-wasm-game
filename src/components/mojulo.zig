@@ -3,6 +3,7 @@
 const std = @import("std");
 const c = @import("../platform.zig");
 const GameSession = @import("../session.zig").GameSession;
+const Transform = @import("./transform.zig").Transform;
 const ShaderProgram = @import("../all_shaders.zig").ShaderProgram;
 const tinyglsl = @import("../tinyglsl.zig");
 
@@ -14,6 +15,7 @@ pub const Mojulo = struct {
     const Self = @This();
 
     shader: ?ShaderProgram = null,
+    origin_transform: ?*Transform = null,
 
     fn setEquation(self: *Self, equation: []const u8) !void {
         const frag = try allocTranslateEquationToFragShader(equation);
@@ -25,6 +27,10 @@ pub const Mojulo = struct {
 };
 
 pub fn update(gs: *GameSession, m: *Mojulo) bool {
+    //if (m.origin_transform) |xform|
+        //if (m.shader) |shader|
+            //shader.setUniformVec3ByName("playerPos", xform.position);
+
     return true;
 }
 

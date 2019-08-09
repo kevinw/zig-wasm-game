@@ -4,6 +4,7 @@ const c = @import("platform.zig");
 const math3d = @import("math3d.zig");
 const debug_gl = @import("debug_gl.zig");
 const Vec4 = math3d.Vec4;
+const Vec3 = math3d.Vec3;
 const Mat4x4 = math3d.Mat4x4;
 const allocator = platform.allocator;
 const log = @import("log.zig").log;
@@ -136,6 +137,46 @@ pub const ShaderProgram = struct {
         return id;
     }
 
+    fn setUniform(sp: ShaderProgram, uniform: var, value: var) void {
+        const uniform_id: c.GLint = switch (@typeInfo(@typeOf(uniform))) {
+            .Array => |a| blk: {
+                // TODO: use a max size so we don't codegen a new copy of this
+                // func for every string length
+                var buf: [a.len + 1]u8 = undefined;
+                std.mem.copy(u8, buf[0..], uniform);
+                buf[a.len] = '\x00';
+                break :blk if (c.is_web)
+                    c.glGetUniformLocation(sp.program_id, &buf, buf.len - 1)
+                else
+                    c.glGetUniformLocation(sp.program_id, &buf);
+            },
+            .Int => |i| uniform,
+            else => @compileError("unexpected type for uniform: " ++ @typeOf(uniform).name),
+        };
+
+        switch (@typeId(@typeOf(value))) {
+            .Int => c.glUniform1i(uniform_id, value),
+            .Float => c.glUniform1f(uniform_id, value),
+            .Struct => {
+                switch (@typeOf(value)) {
+                    Vec3 => {
+                        sp.setUniformVec3(uniform_id, value);
+                    },
+                    Vec4 => {
+                        sp.setUniformVec4(uniform_id, value);
+                    },
+                    Mat4x4 => {
+                        c.glUniformMatrix4fv(uniform_id, 1, c.GL_FALSE, value.data[0][0..].ptr);
+                    },
+                    else => {
+                        @compileError("invalid type to setUniform");
+                    },
+                }
+            },
+            else => @compileError("invalid type to setUniform"),
+        }
+    }
+
     pub fn setUniformInt(sp: ShaderProgram, uniform_id: c.GLint, value: c_int) void {
         c.glUniform1i(uniform_id, value);
     }
@@ -168,6 +209,17 @@ pub const ShaderProgram = struct {
         }
     }
 
+    pub fn setUniformVec3ByName(sp: ShaderProgram, comptime name: []const u8, value: Vec3) void {
+        const location = sp.uniformLoc(name);
+        if (location != -1) {
+            sp.setUniformVec3(location, value);
+        } else {
+            log("location for {}: {}", name, location);
+        }
+
+        debug_gl.assertNoErrorWithMessage("error getting uniform " ++ name);
+    }
+
     pub fn setUniformVec4ByName(sp: ShaderProgram, comptime name: []const u8, value: Vec4) void {
         const location = sp.uniformLoc(name);
         if (location != -1) sp.setUniformVec4(location, value);
@@ -188,8 +240,8 @@ pub const ShaderProgram = struct {
         maybe_geometry_source: ?[]u8,
     ) ShaderProgram {
         var sp: ShaderProgram = undefined;
-        sp.vertex_id = c.initShader(vertex_source, "vertex\x00", c.GL_VERTEX_SHADER);
-        sp.fragment_id = c.initShader(frag_source, "fragment\x00", c.GL_FRAGMENT_SHADER);
+        sp.vertex_id = c.initShader(vertex_source, "vertex" ++ "\x00", c.GL_VERTEX_SHADER);
+        sp.fragment_id = c.initShader(frag_source, "fragment" ++ "\x00", c.GL_FRAGMENT_SHADER);
         sp.program_id = c.linkShaderProgram(sp.vertex_id, sp.fragment_id, null);
         if (maybe_geometry_source) |geo_source| {
             unreachable;

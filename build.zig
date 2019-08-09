@@ -50,8 +50,8 @@ pub fn createNativeStep(b: *Builder) *LibExeObjStep {
     exe.linkSystemLibrary("glfw");
 
     // nuklear
-    //exe.addCSourceFile("lib/nuklear_glfw3.c", [_][]const u8{"-std=c99"});
-    //exe.addIncludeDir("../nuklear");
+    exe.addCSourceFile("lib/nuklear_glfw3.c", [_][]const u8{"-std=c99"});
+    exe.addIncludeDir("../nuklear");
 
     // for libraries installed by vcpkg
     exe.addIncludeDir(VCPKG_PATH ++ "include");

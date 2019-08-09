@@ -131,8 +131,8 @@ fn fillRectShader(s: *ShaderProgram, t: *Game, x: f32, y: f32, w: f32, h: f32) v
     s.bind();
 
     const model = mat4x4_identity.translate(x, y, 0.0).scale(w, h, 0.0);
-    s.setUniformMat4x4ByName("MVP", t.projection.mult(t.view.mult(model)));
-    s.setUniformFloatByName("time", Time.frame_count);
+    s.setUniform("MVP", t.projection.mult(t.view.mult(model)));
+    s.setUniform("time", Time.frame_count);
 
     var gs = t.session;
     if (gs.findFirstObject(Player)) |player| {
@@ -159,8 +159,8 @@ fn fillRectShader(s: *ShaderProgram, t: *Game, x: f32, y: f32, w: f32, h: f32) v
 
 fn fillRectMvp(t: *Game, color: Vec4, mvp: Mat4x4, origin: bool) void {
     t.all_shaders.primitive.bind();
-    t.all_shaders.primitive.setUniformVec4(t.all_shaders.primitive_uniform_color, color);
-    t.all_shaders.primitive.setUniformMat4x4(t.all_shaders.primitive_uniform_mvp, mvp);
+    t.all_shaders.primitive.setUniform(t.all_shaders.primitive_uniform_color, color);
+    t.all_shaders.primitive.setUniform(t.all_shaders.primitive_uniform_mvp, mvp);
 
     const geo = &t.static_geometry;
 
@@ -403,8 +403,13 @@ pub fn restartGame(t: *Game) void {
     follow.offset = vec3(@intToFloat(f32, t.framebuffer_width), @intToFloat(f32, t.framebuffer_height), 0).multScalar(0.5);
 
     const mojulo_id = prefabs.Mojulo.spawn(gs, vec3(0, 0, 0)) catch unreachable;
+
     if (gs.find(mojulo_id, Mojulo)) |mojulo| {
         log("created mojulo {}", mojulo_id);
+
+        if (gs.find(player_id, Transform)) |player_xform|
+            mojulo.origin_transform = player_xform;
+
         t.mojulo = mojulo;
         mojulo.setEquation("x*y*time") catch unreachable;
     }

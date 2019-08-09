@@ -1,6 +1,7 @@
 import os.path
 import io
 import re
+import sys
 
 path_to_components = "src/components/"
 generated_file = "src/components_auto.zig"
@@ -106,7 +107,12 @@ def main():
     to_import = dict()
     all_lines = []
     for filename in os.listdir(path_to_components):
-        all_lines.extend(process_component_file(output, os.path.join(path_to_components, filename), to_import))
+        full_filename = os.path.join(path_to_components, filename)
+        try:
+            all_lines.extend(process_component_file(output, full_filename, to_import))
+        except Exception:
+            print("Exception while processing " + full_filename + ":", file=sys.stderr)
+            raise
 
     to_import = sorted(to_import.items())
 
