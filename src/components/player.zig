@@ -44,5 +44,8 @@ pub fn update(gs: *GameSession, player: *Player, sprite: *Sprite, xform: *Transf
     gun.fire_up = Input.getKey(c.KEY_I);
     gun.fire_down = Input.getKey(c.KEY_K);
 
+    @import("../game.zig").game_state.debug_log("foo");
+
+
     return true;
 }

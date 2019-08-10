@@ -1,3 +1,8 @@
+//
+// TODO: have a way to put "always available text" on the screen.
+// either as a stacking log, or at a specific point with a specific size.
+//
+
 usingnamespace @import("components.zig");
 usingnamespace @import("globals.zig");
 
@@ -83,6 +88,10 @@ pub const Game = struct {
         self.equation_index = std.math.mod(i32, self.equation_index + delta, equations.len) catch unreachable;
         setEquation(self);
     }
+
+    pub fn debug_log(self: *Self, comptime message: []const u8, args: ...) void {
+
+    }
 };
 
 const margin_size = 10;
@@ -100,7 +109,8 @@ const a: f32 = 0.1;
 
 const equations = [_][]const u8{
     "px*py",
-    "(((((sin(A * 20 + time/14) + 2) * 30 + (cos(r * (20 + sin(A * 2 + time/41) * 5) + time/22) + 4) * 30) + (sin(px * time / py / 1000) + 2) * 5 - 20)*0x0000ff)&0x00ff00) + (((((sin(A * 20 + time/7) + 2) * 30 + (cos(r * (20 + sin(A * 2 + time/83) * 5) + time/11) + 4) * 30) + (sin(px * time / py / 1000) + 2) * 5 - 20)*1)&0x0000ff) + (((((sin(A * 20 + time/3.5) + 2) * 30 + (cos(r * (20 + sin(A * 2 + time/166) * 5) + time/6) + 4) * 30) + (sin(px * time / py / 1000) + 2) * 5 - 20)*0x00ff00)&0xff0000)",
+    "(((((sin(PA * 20 + time/14) + 2) * 30 + (cos(pr * (20 + sin(PA * 2 + time/41) * 5) + time/22) + 4) * 30) + (sin(x * time / y / 1000) + 2) * 5 - 20)*0x0000ff)&0x00ff00) + (((((sin(PA * 20 + time/7) + 2) * 30 + (cos(pr * (20 + sin(A * 2 + time/83) * 5) + time/11) + 4) * 30) + (sin(x * time / y / 1000) + 2) * 5 - 20)*1)&0x0000ff) + (((((sin(PA * 20 + time/3.5) + 2) * 30 + (cos(pr * (20 + sin(A * 2 + time/166) * 5) + time/6) + 4) * 30) + (sin(x * time / y / 1000) + 2) * 5 - 20)*0x00ff00)&0xff0000)",
+    //"(((((sin(A * 20 + time/14) + 2) * 30 + (cos(r * (20 + sin(A * 2 + time/41) * 5) + time/22) + 4) * 30) + (sin(x * time / y / 1000) + 2) * 5 - 20)*0x0000ff)&0x00ff00) + (((((sin(A * 20 + time/7) + 2) * 30 + (cos(r * (20 + sin(A * 2 + time/83) * 5) + time/11) + 4) * 30) + (sin(x * time / y / 1000) + 2) * 5 - 20)*1)&0x0000ff) + (((((sin(A * 20 + time/3.5) + 2) * 30 + (cos(r * (20 + sin(A * 2 + time/166) * 5) + time/6) + 4) * 30) + (sin(x * time / y / 1000) + 2) * 5 - 20)*0x00ff00)&0xff0000)",
     "(x-time)*pow(x, 0.001*x*y)",
     "fract(pow(x, y/time))*400.0",
     "10  + 165 * sin(2.5+ (y-50) / 26 ) + 90*sin( time*0.7 - ((0.1*( x - 50 )^2 + (y-50)^2 )^0.45) ) - 255 * (1 + (((x-1) % 50) - (x % 50))) * (1 + (( (y+30-(time%18)-1) % 10) - ( (y+30-(time%18)) % 10))) * ((y%50) + (50-y)%50)",
@@ -404,23 +414,46 @@ pub fn restartGame(t: *Game) void {
     const follow = Follow.spawn(gs, gs.find(player_id, Transform).?) catch unreachable;
     follow.offset = vec3(@intToFloat(f32, t.framebuffer_width), @intToFloat(f32, t.framebuffer_height), 0).multScalar(0.5);
 
-    const mojulo_id = prefabs.Mojulo.spawn(gs, vec3(0, 0, 0)) catch unreachable;
+    var j:usize = 0;
 
-    if (gs.find(mojulo_id, Mojulo)) |mojulo| {
-        log("created mojulo {}", mojulo_id);
+    var x:f32 = 0;
+    var y:f32 = 0;
+    var i:u16 = 0;
+    while (j < equations.len) : (j += 1) {
+        const w = std.math.sqrt(equations.len);
+        const mojulo_id = prefabs.Mojulo.spawn(gs, vec3(x, y, 0)) catch unreachable;
+        if (gs.find(mojulo_id, Mojulo)) |mojulo|  {
+            mojulo.setEquation(equations[j]) catch unreachable;
+            if (j == 0) {
+                t.mojulo = mojulo;
+            }
+        }
 
-        if (gs.find(player_id, Transform)) |player_xform|
-            mojulo.origin_transform = player_xform;
-
-        t.mojulo = mojulo;
-        mojulo.setEquation("x*y*time") catch unreachable;
+        x += @intToFloat(f32, t.framebuffer_width);
+        i += 1;
+        if (i > w) {
+            i = 0;
+            y += @intToFloat(f32, t.framebuffer_height);
+            x = 0;
+        }
     }
 
-    const mojulo_id_2 = prefabs.Mojulo.spawn(gs, vec3(-@intToFloat(f32, t.framebuffer_width), 80, 0)) catch unreachable;
-    if (gs.find(mojulo_id_2, Mojulo)) |mojulo| {
-        log("created mojulo {}", mojulo_id_2);
-        mojulo.setEquation("x") catch unreachable;
-    }
+
+    //const mojulo_id = prefabs.Mojulo.spawn(gs, vec3(0, 0, 0)) catch unreachable;
+    //if (gs.find(mojulo_id, Mojulo)) |mojulo| {
+    //    log("created mojulo {}", mojulo_id);
+
+    //    //if (gs.find(player_id, Transform)) |player_xform|
+    //        //mojulo.origin_transform = player_xform;
+
+    //    t.mojulo = mojulo;
+    //    mojulo.setEquation("x*y*time") catch unreachable;
+    //}
+
+    //const mojulo_id_2 = prefabs.Mojulo.spawn(gs, vec3(-@intToFloat(f32, t.framebuffer_width), 0, 0)) catch unreachable;
+    //if (gs.find(mojulo_id_2, Mojulo)) |mojulo| {
+    //    mojulo.setEquation(equations[9]) catch unreachable;
+    //}
 
     setEquation(t);
 

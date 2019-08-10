@@ -21,6 +21,9 @@ const passThroughVars = struct {
     var time: f64 = 0;
     var A: f64 = 0;
     var r: f64 = 0;
+
+    var PA: f64 = 0;
+    var pr: f64 = 0;
 };
 
 fn isPassThroughVar(address: *f64) bool {

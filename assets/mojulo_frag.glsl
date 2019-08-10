@@ -40,5 +40,7 @@ float equation() {
     float px = x - (playerPos.x * playerScale);
     float py = y - (playerPos.y * playerScale);
     float A = atan(y, x);
+    float PA = atan(py, px);
     float r = sqrt(x * x + y * y);
+    float pr = sqrt(px * px + py * py);
 

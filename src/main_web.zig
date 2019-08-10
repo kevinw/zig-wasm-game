@@ -7,6 +7,7 @@ const fetch = @import("fetch.zig");
 
 // Until std has better WASM panic
 pub fn panic(msg: []const u8, error_return_trace: ?*builtin.StackTrace) noreturn {
+    _log("{}", msg);
     while (true) {
         @breakpoint();
     }
