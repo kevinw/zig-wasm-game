@@ -18,6 +18,8 @@ const font_png = @embedFile("../assets/font.png");
 
 pub const _log = @import("log.zig").log;
 
+pub extern const NvOptimusEnablement:u32 = 0x00000001;
+
 extern fn errorCallback(err: c_int, description: [*c]const u8) void {
     panic("Error: {}\n", std.mem.toSliceConst(u8, description));
 }
