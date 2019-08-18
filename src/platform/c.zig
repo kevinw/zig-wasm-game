@@ -96,3 +96,15 @@ pub fn linkShaderProgram(vertex_id: GLuint, fragment_id: GLuint, geometry_id: ?G
 
     panic("Error linking shader program: {}\n", message.ptr[0..@intCast(usize, error_size)]);
 }
+
+pub fn glCreateTexture() GLuint {
+    var tex: GLuint = undefined;
+    glGenTextures(1, &tex);
+    return tex;
+}
+
+pub fn glCreateBuffer() GLuint {
+    var buf: GLuint = undefined;
+    glGenBuffers(1, &buf);
+    return buf;
+}

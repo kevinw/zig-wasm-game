@@ -243,6 +243,9 @@ pub const Vec2 = struct {
     x: f32,
     y: f32,
 
+
+    pub fn ptr(self: *Vec2) *f32 { return &self.x; }
+
     pub fn init(x: f32, y: f32) Vec2 {
         return Vec2{ .x = x, .y = y };
     }
@@ -270,6 +273,12 @@ pub const Vec2 = struct {
     pub const zero = Vec2{ .x = 0, .y = 0 };
 };
 
+pub fn vec2(x: f32, y: f32) Vec2 {
+    return Vec2{
+        .x = x,
+        .y = y,
+    };
+}
 
 pub const Vec4 = struct {
     x: f32,

@@ -82,11 +82,21 @@ pub const Game = struct {
         fetch.fromCellSize("assets/rocket.png", &self.player, 16, 16) catch unreachable;
         fetch.fromCellSize("assets/bullet.png", &self.bullet_sprite, 10, 10) catch unreachable;
         fetch.fromCellSize("assets/maypole.png", &self.maypole_sprite, 16, 64) catch unreachable;
+        fetch.withCallback("assets/OpenSans-Regular.png", on_font_image, 512, 1024) catch unreachable;
     }
 
     pub fn cycleEquation(self: *Self, delta: i32) void {
         self.equation_index = std.math.mod(i32, self.equation_index + delta, equations.len) catch unreachable;
         setEquation(self);
+    }
+
+    pub fn _on_font_image(self: *Self, raw_image: RawImage) void {
+        if (self.session.findFirstObject(SDFTextRenderer)) |sdf| {
+            log("got raw image for sdf font!");
+            sdf.data.initWithImage(raw_image, 512, 1024);
+        } else {
+            log("no SDFTextRenderer");
+        }
     }
 
     pub fn debug_log(self: *Self, comptime message: []const u8, args: ...) void {
@@ -106,6 +116,10 @@ pub const font_char_width = 18;
 pub const font_char_height = 32;
 
 const a: f32 = 0.1;
+
+fn on_font_image(raw_image: RawImage) void {
+    game_state._on_font_image(raw_image);
+}
 
 const equations = [_][]const u8{
     "px*py",
@@ -267,6 +281,13 @@ pub fn draw(t: *Game) void {
             fillRectMvp(t, vec4(1, 1, 1, 1), mvp, true);
         }
     }
+
+    if (true) {
+        var it = t.session.iter(SDFTextRenderer);
+        while (it.next()) |object|
+            if (object.is_active)
+                object.data.draw();
+    }
 }
 
 pub fn drawText(t: *const Game, text: []const u8, left: i32, top: i32, size: f32) void {
@@ -394,6 +415,11 @@ pub fn restartGame(t: *Game) void {
     t.debug_console.reset();
     const gs = &t.session;
     gs.init(42); //, c.allocator);
+
+    const text = prefabs.spawn_entity_with_components(
+        gs,
+        SDFTextRenderer.init("hello, world!"),
+    ) catch unreachable;
 
     const ss = prefabs.spawn_solar_system(gs);
 

@@ -18,7 +18,7 @@ pub const Gun = struct {
     last_fire_time: f32 = -1,
     fire_delay: f32 = 0.19,
 
-    bullet_speed: f32 = 400,
+    bullet_speed: f32 = 800,
 };
 
 pub fn update(gs: *GameSession, gun: *Gun, transform: *Transform) bool {

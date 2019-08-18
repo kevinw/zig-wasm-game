@@ -1,15 +1,11 @@
+usingnamespace @import("math3d.zig");
+
 const std = @import("std");
 const os = std.os;
 const c = @import("platform.zig");
-const math3d = @import("math3d.zig");
 const debug_gl = @import("debug_gl.zig");
-const Vec4 = math3d.Vec4;
-const Vec3 = math3d.Vec3;
-const Mat4x4 = math3d.Mat4x4;
 const allocator = platform.allocator;
 const log = @import("log.zig").log;
-
-const shader = @import("shader.zig");
 
 pub const AllShaders = struct {
     primitive: ShaderProgram,
@@ -176,6 +172,9 @@ pub const ShaderProgram = struct {
             .ComptimeFloat, .Float => c.glUniform1f(uniform_id, value),
             .Struct => {
                 switch (@typeOf(value)) {
+                    Vec2 => {
+                        sp.setUniformVec2(uniform_id, value);
+                    },
                     Vec3 => {
                         sp.setUniformVec3(uniform_id, value);
                     },
@@ -210,7 +209,16 @@ pub const ShaderProgram = struct {
             sp.setUniformFloat(uniformId, value);
     }
 
-    pub fn setUniformVec3(sp: ShaderProgram, uniform_id: c.GLint, value: math3d.Vec3) void {
+    pub fn setUniformVec2(sp: ShaderProgram, uniform_id: c.GLint, value: Vec2) void {
+        if (c.is_web) {
+            c.glUniform2fv(uniform_id, value.x, value.y);
+        } else {
+            var v = value;
+            c.glUniform2fv(uniform_id, 1, v.ptr());
+        }
+    }
+
+    pub fn setUniformVec3(sp: ShaderProgram, uniform_id: c.GLint, value: Vec3) void {
         if (c.is_web) {
             c.glUniform3fv(uniform_id, value.x, value.y, value.z);
         } else {

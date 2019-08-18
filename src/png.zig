@@ -76,10 +76,10 @@ pub const RawImage = struct {
         if (bits_per_channel != 8) return error.InvalidFormat;
 
         const channel_count = c.png_get_channels(png_ptr, info_ptr);
-        if (channel_count != 4) return error.InvalidFormat;
-
         const color_type = c.png_get_color_type(png_ptr, info_ptr);
-        if (color_type != PNG_COLOR_TYPE_RGBA) return error.InvalidFormat;
+
+        //if (channel_count != 4) return error.InvalidFormat;
+        //if (color_type != PNG_COLOR_TYPE_RGBA) return error.InvalidFormat;
 
         pi.pitch = pi.width * bits_per_channel * channel_count / 8;
         pi.raw = try allocator.alloc(u8, pi.height * pi.pitch);

@@ -107,6 +107,7 @@ const glGetUniformLocation = (programId, namePtr, nameLen) => {
   glUniformLocations.push(gl.getUniformLocation(glPrograms[programId], readCharStr(namePtr, nameLen)));
   return glUniformLocations.length - 1;
 };
+const glUniform2fv = (locationId, x, y) => gl.uniform2fv(glUniformLocations[locationId], [x, y]);
 const glUniform3fv = (locationId, x, y, z) => gl.uniform3fv(glUniformLocations[locationId], [x, y, z]);
 const glUniform4fv = (locationId, x, y, z, w) => gl.uniform4fv(glUniformLocations[locationId], [x, y, z, w]);
 const glUniformMatrix4fv = (locationId, dataLen, transpose, dataPtr) => {
@@ -271,6 +272,7 @@ var webgl = {
   glClear,
   glGetAttribLocation,
   glGetUniformLocation,
+  glUniform2fv,
   glUniform3fv,
   glUniform4fv,
   glUniformMatrix4fv,

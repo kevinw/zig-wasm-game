@@ -8,6 +8,7 @@ pub const Mojulo = @import("components/mojulo.zig").Mojulo;
 pub const Mover = @import("components/mover.zig").Mover;
 pub const Player = @import("components/player.zig").Player;
 pub const Renderer = @import("components/renderer.zig").Renderer;
+pub const SDFTextRenderer = @import("components/sdftextrenderer.zig").SDFTextRenderer;
 pub const Sprite = @import("components/sprite.zig").Sprite;
 pub const Transform = @import("components/transform.zig").Transform;
 usingnamespace @import("session.zig");
@@ -160,6 +161,20 @@ inline fn Renderer_think(gs: *GameSession, self: Renderer_SystemData) bool {
         
 usingnamespace @import("session.zig");
 
+const SDFTextRenderer_SystemData = struct {
+    id: EntityId,
+    self: *SDFTextRenderer,
+};
+
+pub const run_SDFTextRenderer = GameSession.buildSystem(SDFTextRenderer_SystemData, SDFTextRenderer_think);
+
+inline fn SDFTextRenderer_think(gs: *GameSession, self: SDFTextRenderer_SystemData) bool {
+    const mod = @import("components/sdftextrenderer.zig");
+    return @inlineCall(mod.update, gs, self.self);
+}
+        
+usingnamespace @import("session.zig");
+
 const Sprite_SystemData = struct {
     id: EntityId,
     sprite: *Sprite,
@@ -197,6 +212,7 @@ pub fn run_ALL(gs: *GameSession) void {
     run_Mover(gs);
     run_Player(gs);
     run_Renderer(gs);
+    run_SDFTextRenderer(gs);
     run_Sprite(gs);
     run_Transform(gs);
 }
